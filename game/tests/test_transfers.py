@@ -100,7 +100,7 @@ def test_queue_order_enforced_and_first_transfer_succeeds(client, setup):
     open_window(setup)  # remis na 0: G3 pierwszy, potem G2, potem G1
     login(client, setup["users"][0])
     response = post_transfer(client, setup, 0, 0, 0)  # G1 przed swoją kolejką
-    assert "jeszcze nie Twoja kolej" in response.content.decode()
+    assert "Potwierdź, że gracze" in response.content.decode()
     assert Transfer.objects.count() == 0
 
     response = post_transfer(client, setup, 2, 2, 0)  # ktoś robi ruch za G3
@@ -225,3 +225,69 @@ def test_started_competition_rosters_are_frozen_before_roster_changes(setup):
     assert competition.roster_locked is True
     scores = services.weekend_scores(setup["weekend"])
     assert scores[setup["players"][0].pk].total == 50 + 10  # nadal liczy się stary skład
+
+
+@pytest.mark.django_db
+def test_transfer_with_confirmation_skips_earlier_players_and_executes(client, setup):
+    open_window(setup)  # kolejka: G3, G2, G1
+    login(client, setup["users"][0])
+    g1, g2, g3 = setup["players"]
+
+    # Bez potwierdzenia: G1 jest blokowany i dostaje pytanie o pominięcie G3 i G2.
+    response = post_transfer(client, setup, 0, 0, 0)
+    assert "Potwierdź, że gracze G3, G2 zgłosili pominięcie" in response.content.decode()
+    assert Transfer.objects.count() == 0
+    assert setup["weekend"].queue.filter(status=QueueSlot.PENDING).count() == 3
+
+    # Z potwierdzeniem: G3 i G2 są pominięci, a transfer G1 wykonuje się od razu.
+    response = post_transfer(client, setup, 0, 0, 0, confirm="1")
+    html = response.content.decode()
+    assert "WLASNY1 → WOLNY1" in html
+    assert "Pominięci: G3, G2" in html
+    queue = {slot.player_id: slot.status for slot in setup["weekend"].queue.all()}
+    assert queue == {
+        g3.pk: QueueSlot.SKIPPED,
+        g2.pk: QueueSlot.SKIPPED,
+        g1.pk: QueueSlot.DONE,
+    }
+    assert Transfer.objects.get().player == g1
+
+
+@pytest.mark.django_db
+def test_failed_transfer_does_not_skip_anyone(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    # G1 próbuje oddać cudzego zawodnika (G2) - transfer się nie uda, pominięcia mają się cofnąć.
+    response = client.post(
+        reverse("transfer_make", args=[setup["weekend"].pk]),
+        {
+            "player": setup["players"][0].pk,
+            "out": setup["owned"][1].pk,
+            "in": setup["free"][0].pk,
+            "confirm": "1",
+        },
+        follow=True,
+    )
+    assert "nie należy do tego gracza" in response.content.decode()
+    assert setup["weekend"].queue.filter(status=QueueSlot.PENDING).count() == 3
+
+
+@pytest.mark.django_db
+def test_skip_with_confirmation_also_skips_earlier_players(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    client.post(
+        reverse("transfer_skip", args=[setup["weekend"].pk]),
+        {"player": setup["players"][0].pk, "confirm": "1"},
+        follow=True,
+    )
+    assert setup["weekend"].queue.filter(status=QueueSlot.SKIPPED).count() == 3
+
+
+@pytest.mark.django_db
+def test_transfer_form_shows_confirmation_checkbox_for_waiting_player(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    html = client.get(reverse("transfers")).content.decode()
+    assert "zgłosili pominięcie transferów" in html
+    assert 'name="confirm"' in html

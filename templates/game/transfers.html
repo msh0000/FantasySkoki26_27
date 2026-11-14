@@ -59,7 +59,7 @@
       <span class="muted">{% if card.status_label %} - {{ card.status_label }}{% endif %}{% if card.made %}, transferów: {{ card.made }}{% endif %}</span>
     </summary>
 
-    {% if card.can_act or user.is_staff %}
+    {% if card.can_act or card.waiting_for or user.is_staff %}
     <form method="post" action="{% url 'transfer_make' weekend.pk %}">
       {% csrf_token %}
       <input type="hidden" name="player" value="{{ card.player.pk }}">
@@ -81,6 +81,11 @@
         </select>
       </label>
       {% if card.made %}<p class="muted">Ten transfer będzie kosztował {{ card.next_fee }} pkt.</p>{% endif %}
+      {% if card.waiting_for %}
+      <label><input type="checkbox" name="confirm" value="1">
+        Potwierdzam, że gracze {{ card.waiting_for|join:", " }} zgłosili pominięcie transferów
+        (zostaną pominięci, a mój transfer wykona się od razu).</label>
+      {% endif %}
       {% if user.is_staff %}
       <label><input type="checkbox" name="override" value="1"> Tryb admina (pomiń kolejkę{% if locked %} i blokadę weekendu{% endif %})</label>
       {% endif %}

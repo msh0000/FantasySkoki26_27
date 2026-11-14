@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -204,22 +205,37 @@ def transfer_make(request, weekend_id):
     if out_jumper is None or in_jumper is None:
         messages.error(request, "Wybierz zawodnika do oddania i zawodnika do wzięcia.")
         return redirect("transfers_for", weekend_id=weekend.pk)
-    try:
-        services.make_transfer(
-            weekend,
-            player,
-            out_jumper,
-            in_jumper,
-            made_by=request.user,
-            enforce_queue=not override,
-            enforce_lock=not override,
+    waiting = [] if override else services.players_to_confirm_skip(weekend, player)
+    if waiting and request.POST.get("confirm") != "1":
+        names = ", ".join(p.name for p in waiting)
+        messages.error(
+            request, f"Potwierdź, że gracze {names} zgłosili pominięcie transferów (lub poczekaj)."
         )
+        return redirect("transfers_for", weekend_id=weekend.pk)
+    try:
+        with transaction.atomic():
+            # Potwierdzenie = poprzedni gracze w kolejce zostają pominięci, a ruch wykonuje się
+            # od razu. Gdy transfer się nie uda, pominięcia też się cofają.
+            for skipped in waiting:
+                services.skip_turn(weekend, skipped)
+            services.make_transfer(
+                weekend,
+                player,
+                out_jumper,
+                in_jumper,
+                made_by=request.user,
+                enforce_queue=not override,
+                enforce_lock=not override,
+            )
     except services.TransferError as error:
         messages.error(request, str(error))
     else:
         fee = rules.transfer_fee(services.transfers_made(weekend).get(player.pk, 0))
         suffix = f" Kara: {fee} pkt." if fee else ""
-        messages.success(request, f"{player.name}: {out_jumper.name} → {in_jumper.name}.{suffix}")
+        skipped_note = f" Pominięci: {', '.join(p.name for p in waiting)}." if waiting else ""
+        messages.success(
+            request, f"{player.name}: {out_jumper.name} → {in_jumper.name}.{suffix}{skipped_note}"
+        )
     return redirect("transfers_for", weekend_id=weekend.pk)
 
 
@@ -235,6 +251,10 @@ def transfer_skip(request, weekend_id):
     elif weekend.is_locked() and not _override(request):
         messages.error(request, "Weekend już się rozpoczął.")
     else:
+        # Potwierdzenie obejmuje też poprzednich graczy w kolejce - oni też zostają pominięci.
+        for skipped in [] if _override(request) else waiting:
+            services.skip_turn(weekend, skipped)
         services.skip_turn(weekend, player)
-        messages.success(request, f"{player.name} pomija transfer w tym weekendzie.")
+        note = f" Pominięci razem z nim: {', '.join(p.name for p in waiting)}." if waiting else ""
+        messages.success(request, f"{player.name} pomija transfer w tym weekendzie.{note}")
     return redirect("transfers_for", weekend_id=weekend.pk)
