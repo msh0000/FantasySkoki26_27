@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Transfery{% endblock %}
+{% block content %}
+{% if not weekend %}
+<article><p class="muted">Brak weekendów w bazie.</p></article>
+{% else %}
+<article>
+  <h2>Transfery: {{ weekend.name }}</h2>
+  <label>Weekend
+    <select onchange="if (this.value) location = this.value">
+      {% for w in weekends %}
+      <option value="{% url 'transfers_for' w.pk %}" {% if w.pk == weekend.pk %}selected{% endif %}>{{ w.name }} ({{ w.start_date|date:"d.m.Y" }})</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  {% if locked %}
+    <p><strong>Weekend już się rozpoczął</strong> - transfery są zablokowane{% if user.is_staff %} (admin może je wykonać w trybie admina){% endif %}.</p>
+  {% endif %}
+
+  {% if not has_queue %}
+    <p>Okno transferowe nie zostało jeszcze otwarte.</p>
+    {% if user.is_staff %}
+    <form method="post" action="{% url 'transfer_open' weekend.pk %}">
+      {% csrf_token %}
+      <button type="submit">Otwórz okno transferowe (kolejka wg rankingu)</button>
+    </form>
+    <p class="muted">Otwórz je dopiero, gdy wyniki poprzedniego weekendu są wczytane - od nich zależy kolejność.</p>
+    {% endif %}
+  {% else %}
+    <h3>Kolejka</h3>
+    <p class="muted">Idzie od ostatniego miejsca w rankingu. Gdy wszyscy zrobią transfer lub pominą, każdy może działać (kto pierwszy).</p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>#</th><th>Gracz</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for slot in slots %}
+        <tr {% if me and slot.player_id == me.pk %}class="me"{% endif %}>
+          <td>{{ slot.position }}</td>
+          <td>{{ slot.player.name }}</td>
+          <td>{{ slot.get_status_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+</article>
+
+{% if has_queue or user.is_staff %}
+<article>
+  <h3>Wykonaj transfer</h3>
+  <p class="muted">Możesz zrobić ruch także za innego gracza (np. po uzgodnieniu na Messengerze). Pierwszy transfer w weekendzie jest darmowy, każdy kolejny kosztuje -5 pkt.</p>
+
+  {% for card in cards %}
+  <details {% if card.is_me %}open{% endif %}>
+    <summary>
+      <span {% if card.is_me %}class="me"{% endif %}>{{ card.player.name }}</span>
+      <span class="muted">{% if card.status_label %} - {{ card.status_label }}{% endif %}{% if card.made %}, transferów: {{ card.made }}{% endif %}</span>
+    </summary>
+
+    {% if card.can_act or user.is_staff %}
+    <form method="post" action="{% url 'transfer_make' weekend.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="player" value="{{ card.player.pk }}">
+      <label>Oddaję
+        <select name="out" required>
+          <option value="">-</option>
+          {% for jumper in card.jumpers %}<option value="{{ jumper.pk }}">{{ jumper.name }} ({{ jumper.country }})</option>{% endfor %}
+        </select>
+      </label>
+      <label>Biorę
+        <select name="in" required>
+          <option value="">-</option>
+          <optgroup label="Skoczkowie">
+            {% for jumper in free_men %}<option value="{{ jumper.pk }}">{{ jumper.name }} ({{ jumper.country }})</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Skoczkinie">
+            {% for jumper in free_women %}<option value="{{ jumper.pk }}">{{ jumper.name }} ({{ jumper.country }})</option>{% endfor %}
+          </optgroup>
+        </select>
+      </label>
+      {% if card.made %}<p class="muted">Ten transfer będzie kosztował {{ card.next_fee }} pkt.</p>{% endif %}
+      {% if user.is_staff %}
+      <label><input type="checkbox" name="override" value="1"> Tryb admina (pomiń kolejkę{% if locked %} i blokadę weekendu{% endif %})</label>
+      {% endif %}
+      <button type="submit">Wykonaj transfer</button>
+    </form>
+    {% else %}
+      <p class="muted">Jeszcze nie ta kolej.{% if card.waiting_for %} Najpierw: {{ card.waiting_for|join:", " }}.{% endif %}</p>
+    {% endif %}
+
+    {% if has_queue and card.status == "pending" and not locked %}
+    <form method="post" action="{% url 'transfer_skip' weekend.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="player" value="{{ card.player.pk }}">
+      {% if card.waiting_for %}
+      <label><input type="checkbox" name="confirm" value="1" required>
+        Potwierdzam, że gracze {{ card.waiting_for|join:", " }} zgłosili pominięcie transferów.</label>
+      {% endif %}
+      <button type="submit" class="outline secondary">Pomiń transfer w tym weekendzie</button>
+    </form>
+    {% endif %}
+  </details>
+  {% endfor %}
+</article>
+{% endif %}
+
+<article>
+  <h3>Transfery w tym weekendzie</h3>
+  {% if history %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Gracz</th><th>Oddał</th><th>Wziął</th><th>Kiedy</th></tr></thead>
+    <tbody>
+      {% for transfer in history %}
+      <tr>
+        <td>{{ transfer.player.name }}</td>
+        <td>{{ transfer.out_jumper.name }}</td>
+        <td>{{ transfer.in_jumper.name }}</td>
+        <td>{{ transfer.created_at|date:"d.m H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Jeszcze żadnych transferów.</p>{% endif %}
+</article>
+{% endif %}
+{% endblock %}

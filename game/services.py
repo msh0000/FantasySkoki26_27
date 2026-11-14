@@ -40,7 +40,24 @@ def snapshot_rosters(competition: Competition) -> None:
         competition.save(update_fields=["roster_locked"])
 
 
+def lock_started_competitions(now=None) -> int:
+    """Zamraża składy konkursów, które już ruszyły, a jeszcze nie mają zrzutu.
+
+    Dzięki temu późniejsze transfery nie zmienią wstecz punktów starych konkursów. Wywołujemy to
+    przed każdą zmianą składów i przy liczeniu punktów (nie mamy harmonogramu na serwerze).
+    """
+    locked = 0
+    for competition in Competition.objects.filter(
+        roster_locked=False, start_at__lte=now or timezone.now()
+    ):
+        snapshot_rosters(competition)
+        locked += 1
+    return locked
+
+
 def competition_rosters(competition: Competition) -> dict[int, list[int]]:
+    if not competition.roster_locked and competition.is_locked():
+        snapshot_rosters(competition)
     rosters: dict[int, list[int]] = defaultdict(list)
     if competition.roster_locked:
         for entry in competition.rosters.all():
@@ -182,6 +199,7 @@ def make_transfer(
     if enforce_queue and not can_transfer(weekend, player):
         raise TransferError("To jeszcze nie Twoja kolej w kolejce transferów.")
 
+    lock_started_competitions(now)
     out_jumper.owner = None
     out_jumper.save(update_fields=["owner"])
     in_jumper.owner = player
@@ -214,6 +232,7 @@ def draft_conflicts(selection: dict[Player, list[Jumper]]) -> list[str]:
 @transaction.atomic
 def assign_rosters(selection: dict[Player, list[Jumper]]) -> None:
     """Ustawia składy podanych graczy (zastępuje ich dotychczasowe)."""
+    lock_started_competitions()
     Jumper.objects.filter(owner__in=list(selection)).update(owner=None)
     for player, jumpers in selection.items():
         Jumper.objects.filter(id__in=[j.id for j in jumpers]).update(owner=player)
@@ -237,3 +256,23 @@ def bonus_overview(player: Player) -> list[dict]:
         }
         for spec in SPECS.values()
     ]
+
+
+# --- Okno transferowe (pomocnicze dla ekranów) ---------------------------------------------------
+
+
+def current_transfer_weekend() -> Weekend | None:
+    """Najbliższy weekend, który jeszcze się nie rozpoczął (a gdy brak - ostatni)."""
+    weekends = list(Weekend.objects.all())
+    for weekend in weekends:
+        if not weekend.is_locked():
+            return weekend
+    return weekends[-1] if weekends else None
+
+
+def transfers_made(weekend: Weekend) -> dict[int, int]:
+    """Liczba transferów każdego gracza w weekendzie (do kary za kolejne)."""
+    return {
+        row["player"]: row["n"]
+        for row in weekend.transfers.values("player").annotate(n=Count("id"))
+    }

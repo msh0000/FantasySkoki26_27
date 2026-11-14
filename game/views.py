@@ -4,10 +4,11 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from . import services
+from . import rules, services
 from .forms import DraftForm
-from .models import Player, Weekend
+from .models import Jumper, Player, QueueSlot, Weekend
 
 
 def _current_player(request) -> Player | None:
@@ -112,3 +113,128 @@ def draft(request):
                 messages.success(request, "Składy zapisane.")
                 return redirect("draft")
     return render(request, "game/draft.html", {"forms": forms})
+
+
+# --- Transfery ------------------------------------------------------------------------------
+
+
+def _transfer_context(request, weekend: Weekend) -> dict:
+    me = _current_player(request)
+    slots = list(weekend.queue.select_related("player"))
+    queue = [s.player_id for s in slots]
+    resolved = {s.player_id for s in slots if s.status != QueueSlot.PENDING}
+    status_by_player = {s.player_id: s.status for s in slots}
+    counts = services.transfers_made(weekend)
+    free = Jumper.objects.filter(active=True, owner__isnull=True).order_by("gender", "name")
+    cards = []
+    for player in Player.objects.all():
+        waiting_for = rules.players_to_confirm_skip(queue, resolved, player.pk)
+        names = {p.pk: p.name for p in Player.objects.filter(pk__in=waiting_for)}
+        cards.append(
+            {
+                "player": player,
+                "is_me": me is not None and me.pk == player.pk,
+                "jumpers": list(player.jumpers.all()),
+                "status": status_by_player.get(player.pk),
+                "status_label": dict(QueueSlot.STATUSES).get(status_by_player.get(player.pk), ""),
+                "can_act": rules.can_act_in_queue(queue, resolved, player.pk) if slots else False,
+                "waiting_for": [names[i] for i in waiting_for],
+                "made": counts.get(player.pk, 0),
+                "next_fee": rules.transfer_fee(counts.get(player.pk, 0) + 1),
+            }
+        )
+    return {
+        "weekend": weekend,
+        "weekends": Weekend.objects.all(),
+        "locked": weekend.is_locked(),
+        "has_queue": bool(slots),
+        "slots": slots,
+        "cards": cards,
+        "free_men": free.filter(gender="M"),
+        "free_women": free.filter(gender="K"),
+        "history": weekend.transfers.select_related("player", "out_jumper", "in_jumper").order_by(
+            "-created_at"
+        ),
+        "me": me,
+    }
+
+
+@login_required
+def transfers(request, weekend_id=None):
+    weekend = (
+        get_object_or_404(Weekend, pk=weekend_id)
+        if weekend_id
+        else services.current_transfer_weekend()
+    )
+    if weekend is None:
+        return render(request, "game/transfers.html", {"weekend": None})
+    return render(request, "game/transfers.html", _transfer_context(request, weekend))
+
+
+def _override(request) -> bool:
+    """Tryb admina: pomija kolejkę i blokadę weekendu (tylko dla staff)."""
+    return request.user.is_staff and request.POST.get("override") == "1"
+
+
+@login_required
+@require_POST
+def transfer_open(request, weekend_id):
+    if not request.user.is_staff:
+        raise PermissionDenied
+    weekend = get_object_or_404(Weekend, pk=weekend_id)
+    if weekend.queue.exists():
+        messages.info(request, "Okno transferowe jest już otwarte.")
+    else:
+        services.build_queue(weekend)
+        messages.success(request, "Okno transferowe otwarte - kolejka utworzona wg rankingu.")
+    return redirect("transfers_for", weekend_id=weekend.pk)
+
+
+@login_required
+@require_POST
+def transfer_make(request, weekend_id):
+    weekend = get_object_or_404(Weekend, pk=weekend_id)
+    player = get_object_or_404(Player, pk=request.POST.get("player"))
+    override = _override(request)
+    if not weekend.queue.exists() and not override:
+        messages.error(request, "Okno transferowe nie zostało jeszcze otwarte.")
+        return redirect("transfers_for", weekend_id=weekend.pk)
+    out_jumper = Jumper.objects.filter(pk=request.POST.get("out") or None).first()
+    in_jumper = Jumper.objects.filter(pk=request.POST.get("in") or None).first()
+    if out_jumper is None or in_jumper is None:
+        messages.error(request, "Wybierz zawodnika do oddania i zawodnika do wzięcia.")
+        return redirect("transfers_for", weekend_id=weekend.pk)
+    try:
+        services.make_transfer(
+            weekend,
+            player,
+            out_jumper,
+            in_jumper,
+            made_by=request.user,
+            enforce_queue=not override,
+            enforce_lock=not override,
+        )
+    except services.TransferError as error:
+        messages.error(request, str(error))
+    else:
+        fee = rules.transfer_fee(services.transfers_made(weekend).get(player.pk, 0))
+        suffix = f" Kara: {fee} pkt." if fee else ""
+        messages.success(request, f"{player.name}: {out_jumper.name} → {in_jumper.name}.{suffix}")
+    return redirect("transfers_for", weekend_id=weekend.pk)
+
+
+@login_required
+@require_POST
+def transfer_skip(request, weekend_id):
+    weekend = get_object_or_404(Weekend, pk=weekend_id)
+    player = get_object_or_404(Player, pk=request.POST.get("player"))
+    waiting = services.players_to_confirm_skip(weekend, player)
+    if waiting and request.POST.get("confirm") != "1" and not _override(request):
+        names = ", ".join(p.name for p in waiting)
+        messages.error(request, f"Potwierdź, że pominięcie zgłosili: {names}.")
+    elif weekend.is_locked() and not _override(request):
+        messages.error(request, "Weekend już się rozpoczął.")
+    else:
+        services.skip_turn(weekend, player)
+        messages.success(request, f"{player.name} pomija transfer w tym weekendzie.")
+    return redirect("transfers_for", weekend_id=weekend.pk)

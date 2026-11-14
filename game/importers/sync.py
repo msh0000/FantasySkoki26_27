@@ -250,6 +250,10 @@ def load_snapshot(directory: Path) -> dict[str, int]:
     for gender, rows in snapshot.read_jumpers(directory).items():
         import_jumpers(rows, gender)
 
+    from game import services  # tu, żeby uniknąć importu kołowego
+
+    services.lock_started_competitions()
+
     genders = snapshot.read_genders(directory)
     for external_id, rows in snapshot.read_results(directory).items():
         competition = Competition.objects.filter(external_id=external_id).first()
