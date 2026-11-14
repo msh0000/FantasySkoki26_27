@@ -259,3 +259,106 @@ def test_mixed_results_resolve_unknown_gender_from_profiles():
         Result.objects.filter(competition=comp, jumper__gender="K").values_list("rank", flat=True)
     )
     assert women_ranks == [1, 2, 3]
+
+
+# --- Migawki (GitHub Actions -> pliki -> serwer) ---------------------------------------------
+
+
+def fake_site(today_results: set[str]):
+    """Udaje skijumping.pl na podstawie zapisanych stron."""
+    pages = {
+        "/zawody/ps": fixture("calendar_ps.html"),
+        "/zawody/lps": fixture("calendar_lps.html"),
+        "/zawody/ms": fixture("calendar_ms.html"),
+    }
+    calls: list[str] = []
+
+    def fetch(path: str) -> str:
+        calls.append(path)
+        if path in pages:
+            return pages[path]
+        if path.startswith("/wyniki/klasyfikacja/ps/"):
+            return fixture("standings_ps.html")
+        if path.startswith("/wyniki/klasyfikacja/lps/"):
+            return "<html></html>"
+        if path.startswith("/zawodnicy/"):
+            return "Zobacz wyniki skoczka"
+        external_id = path.rsplit("/", 1)[-1]
+        if external_id in today_results:
+            return fixture("result_men_individual.html")
+        return "<html><body>brak</body></html>"
+
+    return fetch, calls
+
+
+def test_fetch_snapshot_writes_files_and_is_idempotent(tmp_path):
+    from game.importers import snapshot
+
+    fetch, calls = fake_site({"5753"})  # konkurs M z 21.11.2026
+    today = date(2026, 11, 21)
+    first = snapshot.fetch_snapshot(tmp_path, today=today, fetch=fetch)
+    assert first["results_fetched"] == 1
+    assert (tmp_path / "calendar.json").exists()
+    assert (tmp_path / "jumpers.json").exists()
+    assert (tmp_path / "results" / "5753.json").exists()
+    # Konkursy z przyszłości nie są pobierane.
+    assert not any(c.endswith("/5770") for c in calls)
+
+    second = snapshot.fetch_snapshot(tmp_path, today=today, fetch=fetch)
+    assert second["changed_files"] == 0  # te same dane = brak zmian w plikach
+
+
+def test_fetch_snapshot_does_not_refetch_old_results(tmp_path):
+    from game.importers import snapshot
+
+    fetch, calls = fake_site({"5753"})
+    snapshot.fetch_snapshot(tmp_path, today=date(2026, 11, 21), fetch=fetch)
+    calls.clear()
+    # Tydzień później wyniki konkursu 5753 są już "stare" - nie pobieramy ich ponownie.
+    snapshot.fetch_snapshot(tmp_path, today=date(2026, 11, 29), fetch=fetch)
+    assert "/wyniki/zawody/5753" not in calls
+
+
+def test_fetch_snapshot_resolves_genders_for_mixed_competition(tmp_path):
+    from game.importers import snapshot
+
+    pages = {
+        "/zawody/ps": fixture("calendar_ps.html"),
+        "/zawody/lps": fixture("calendar_lps.html"),
+        "/zawody/ms": fixture("calendar_ms.html"),
+    }
+
+    def fetch(path: str) -> str:
+        if path in pages:
+            return pages[path]
+        if path.startswith("/wyniki/klasyfikacja/"):
+            return "<html></html>"
+        if path.startswith("/zawodnicy/"):
+            return "Zobacz wyniki skoczkini" if "nika-prevc" in path else "Zobacz wyniki skoczka"
+        if path == "/wyniki/zawody/5752":  # mieszany, 20.11.2026
+            return fixture("result_mixed_team.html")
+        return "<html></html>"
+
+    snapshot.fetch_snapshot(tmp_path, today=date(2026, 11, 20), fetch=fetch)
+    genders = snapshot.read_genders(tmp_path)
+    assert len(genders) == 60
+    assert genders["3016"] == "K"  # Nika Prevc
+    assert genders["3258"] == "M"
+
+
+@pytest.mark.django_db
+def test_load_snapshot_fills_database(tmp_path):
+    from game.importers import snapshot
+
+    fetch, _ = fake_site({"5753"})
+    snapshot.fetch_snapshot(tmp_path, today=date(2026, 11, 21), fetch=fetch)
+
+    summary = sync.load_snapshot(tmp_path)
+    assert summary["competitions_created"] == 74
+    competition = Competition.objects.get(external_id="5753")
+    assert Result.objects.filter(competition=competition).count() == 50
+    assert Jumper.objects.filter(gender="M").count() >= 50
+
+    again = sync.load_snapshot(tmp_path)  # drugie wczytanie niczego nie dubluje
+    assert again["competitions_created"] == 0
+    assert Result.objects.filter(competition=competition).count() == 50

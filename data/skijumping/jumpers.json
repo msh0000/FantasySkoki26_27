@@ -1,0 +1,876 @@
+{
+ "K": [
+  {
+   "country": "SLO",
+   "external_id": "3016",
+   "name": "PREVC Nika",
+   "slug": "nika-prevc"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2680",
+   "name": "MARUYAMA Nozomi",
+   "slug": "nozomi-maruyama"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2418",
+   "name": "STROEM Anna Odine",
+   "slug": "anna-odine-stroem"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3273",
+   "name": "FETTNER Lisa",
+   "slug": "lisa-fettner"
+  },
+  {
+   "country": "GER",
+   "external_id": "3189",
+   "name": "FREITAG Selina",
+   "slug": "selina-freitag"
+  },
+  {
+   "country": "CAN",
+   "external_id": "2871",
+   "name": "STRATE Abigail",
+   "slug": "abigail-strate"
+  },
+  {
+   "country": "GER",
+   "external_id": "2690",
+   "name": "REISCH Agnes",
+   "slug": "agnes-reisch"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3333",
+   "name": "KVANDAL Eirin Maria",
+   "slug": "eirin-maria-kvandal"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2094",
+   "name": "TAKANASHI Sara",
+   "slug": "sara-takanashi"
+  },
+  {
+   "country": "SLO",
+   "external_id": "2860",
+   "name": "VODAN Nika",
+   "slug": "nika-vodan"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3303",
+   "name": "TRAASERUD Heidi Dyhre",
+   "slug": "heidi-dyhre-traaserud"
+  },
+  {
+   "country": "GER",
+   "external_id": "2004",
+   "name": "SCHMID Katharina",
+   "slug": "katharina-schmid"
+  },
+  {
+   "country": "JPN",
+   "external_id": "1832",
+   "name": "ITO Yuki",
+   "slug": "yuki-ito"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3473",
+   "name": "MUEHLBACHER Julia",
+   "slug": "julia-muehlbacher"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2667",
+   "name": "SETO Yuka",
+   "slug": "yuka-seto"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2778",
+   "name": "OPSETH Silje",
+   "slug": "silje-opseth"
+  },
+  {
+   "country": "CHN",
+   "external_id": "3767",
+   "name": "ZENG Ping",
+   "slug": "ping-zeng"
+  },
+  {
+   "country": "GER",
+   "external_id": "1046",
+   "name": "SEYFARTH Juliane",
+   "slug": "juliane-seyfarth"
+  },
+  {
+   "country": "SWE",
+   "external_id": "3126",
+   "name": "WESTMAN Frida",
+   "slug": "frida-westman"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3691",
+   "name": "MIYAJIMA Ringo",
+   "slug": "ringo-miyajima"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3413",
+   "name": "HANSEN Gyda Westvold",
+   "slug": "gyda-westvold-hansen"
+  },
+  {
+   "country": "FIN",
+   "external_id": "1873",
+   "name": "RAUTIONAHO Jenny",
+   "slug": "jenny-rautionaho"
+  },
+  {
+   "country": "ITA",
+   "external_id": "3010",
+   "name": "SIEFF Annika",
+   "slug": "annika-sieff"
+  },
+  {
+   "country": "POL",
+   "external_id": "2710",
+   "name": "TWARDOSZ Anna",
+   "slug": "anna-twardosz"
+  },
+  {
+   "country": "FRA",
+   "external_id": "3127",
+   "name": "PAGNIER Josephine",
+   "slug": "josephine-pagnier"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3870",
+   "name": "MIDTSKOGEN Ingvild Synnoeve",
+   "slug": "ingvild-synnoeve-midtskogen"
+  },
+  {
+   "country": "USA",
+   "external_id": "3262",
+   "name": "BELSHAW Annika",
+   "slug": "annika-belshaw"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3123",
+   "name": "KOMAR Katra",
+   "slug": "katra-komar"
+  },
+  {
+   "country": "USA",
+   "external_id": "3789",
+   "name": "JOHNSON Josie",
+   "slug": "josie-johnson"
+  },
+  {
+   "country": "GER",
+   "external_id": "2003",
+   "name": "HOLLANDT Anna",
+   "slug": "anna-hollandt"
+  },
+  {
+   "country": "USA",
+   "external_id": "3387",
+   "name": "JONES Paige",
+   "slug": "paige-jones"
+  },
+  {
+   "country": "SUI",
+   "external_id": "3650",
+   "name": "ARNET Sina",
+   "slug": "sina-arnet"
+  },
+  {
+   "country": "CZE",
+   "external_id": "3799",
+   "name": "INDRACKOVA Anezka",
+   "slug": "anezka-indrackova"
+  },
+  {
+   "country": "CZE",
+   "external_id": "3382",
+   "name": "ULRICHOVA Klara",
+   "slug": "klara-ulrichova"
+  },
+  {
+   "country": "CAN",
+   "external_id": "2864",
+   "name": "MAURER Nicole",
+   "slug": "nicole-maurer"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3802",
+   "name": "KOVACIC Maja",
+   "slug": "maja-kovacic"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3877",
+   "name": "SATO Yuzuki",
+   "slug": "yuzuki-sato"
+  },
+  {
+   "country": "CHN",
+   "external_id": "2677",
+   "name": "DONG Bing",
+   "slug": "bing-dong"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3690",
+   "name": "ICHINOHE Kurumi",
+   "slug": "kurumi-ichinohe"
+  },
+  {
+   "country": "FIN",
+   "external_id": "4090",
+   "name": "HIRVONEN Heta",
+   "slug": "heta-hirvonen"
+  },
+  {
+   "country": "ITA",
+   "external_id": "3018",
+   "name": "ZANITZER Martina",
+   "slug": "martina-zanitzer"
+  },
+  {
+   "country": "CHN",
+   "external_id": "2531",
+   "name": "LIU Qi",
+   "slug": "qi-liu"
+  },
+  {
+   "country": "FIN",
+   "external_id": "1870",
+   "name": "KYKKAENEN Julia",
+   "slug": "julia-kykkaenen"
+  },
+  {
+   "country": "FIN",
+   "external_id": "3957",
+   "name": "KORHONEN Minja",
+   "slug": "minja-korhonen"
+  },
+  {
+   "country": "SLO",
+   "external_id": "2277",
+   "name": "KLINEC Ema",
+   "slug": "ema-klinec"
+  },
+  {
+   "country": "ROU",
+   "external_id": "2230",
+   "name": "TOTH Daniela Vasilica",
+   "slug": "daniela-vasilica-toth"
+  },
+  {
+   "country": "FIN",
+   "external_id": "3689",
+   "name": "MATTILA Sofia",
+   "slug": "sofia-mattila"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3756",
+   "name": "JESENKO Jerica",
+   "slug": "jerica-jesenko"
+  },
+  {
+   "country": "SLO",
+   "external_id": "4128",
+   "name": "TERBOVSEK Taja",
+   "slug": "taja-terbovsek"
+  },
+  {
+   "country": "GER",
+   "external_id": "3502",
+   "name": "TORAZZA Emely",
+   "slug": "emely-torazza"
+  },
+  {
+   "country": "SVK",
+   "external_id": "4040",
+   "name": "KAPUSTIKOVA Kira Maria",
+   "slug": "kira-maria-kapustikova"
+  },
+  {
+   "country": "POL",
+   "external_id": "3715",
+   "name": "BEŁTOWSKA Pola",
+   "slug": "pola-beltowska"
+  },
+  {
+   "country": "CHN",
+   "external_id": "3963",
+   "name": "ZHOU Shiyu",
+   "slug": "shiyu-zhou"
+  },
+  {
+   "country": "CHN",
+   "external_id": "3516",
+   "name": "WANG Liangyao",
+   "slug": "liangyao-wang"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3804",
+   "name": "BODLAJ Taja",
+   "slug": "taja-bodlaj"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3868",
+   "name": "WADSAK Meghann",
+   "slug": "meghann-wadsak"
+  },
+  {
+   "country": "CHN",
+   "external_id": "3984",
+   "name": "WENG Yangning",
+   "slug": "yangning-weng"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3876",
+   "name": "SAITO Yu",
+   "slug": "yu-saito"
+  },
+  {
+   "country": "FIN",
+   "external_id": "3781",
+   "name": "AIKIA Julia",
+   "slug": "julia-aikia"
+  },
+  {
+   "country": "USA",
+   "external_id": "3954",
+   "name": "SPROCH Sandra",
+   "slug": "sandra-sproch"
+  },
+  {
+   "country": "GER",
+   "external_id": "4064",
+   "name": "KREIBICH Julina",
+   "slug": "julina-kreibich"
+  },
+  {
+   "country": "FIN",
+   "external_id": "4101",
+   "name": "THURE Oosa",
+   "slug": "oosa-thure"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3843",
+   "name": "NAKAYAMA Nagomi",
+   "slug": "nagomi-nakayama"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3377",
+   "name": "WIEGELE Hannah",
+   "slug": "hannah-wiegele"
+  },
+  {
+   "country": "UKR",
+   "external_id": "4042",
+   "name": "KOZŁOWA Karina",
+   "slug": "karina-kozlowa"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3757",
+   "name": "KOMAR Tinkara",
+   "slug": "tinkara-komar"
+  },
+  {
+   "country": "FRA",
+   "external_id": "3788",
+   "name": "CHERVET Emma",
+   "slug": "emma-chervet"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3339",
+   "name": "HIRNER Lisa",
+   "slug": "lisa-hirner"
+  }
+ ],
+ "M": [
+  {
+   "country": "SLO",
+   "external_id": "2523",
+   "name": "PREVC Domen",
+   "slug": "domen-prevc"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2600",
+   "name": "KOBAYASHI Ryoyu",
+   "slug": "ryoyu-kobayashi"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3495",
+   "name": "TSCHOFENIG Daniel",
+   "slug": "daniel-tschofenig"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3215",
+   "name": "NIKAIDO Ren",
+   "slug": "ren-nikaido"
+  },
+  {
+   "country": "SLO",
+   "external_id": "2207",
+   "name": "LANISEK Anze",
+   "slug": "anze-lanisek"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3853",
+   "name": "EMBACHER Stephan",
+   "slug": "stephan-embacher"
+  },
+  {
+   "country": "GER",
+   "external_id": "3256",
+   "name": "RAIMUND Philipp",
+   "slug": "philipp-raimund"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3258",
+   "name": "HOERL Jan",
+   "slug": "jan-hoerl"
+  },
+  {
+   "country": "GER",
+   "external_id": "2796",
+   "name": "HOFFMANN Felix",
+   "slug": "felix-hoffmann"
+  },
+  {
+   "country": "AUT",
+   "external_id": "2066",
+   "name": "KRAFT Stefan",
+   "slug": "stefan-kraft"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2380",
+   "name": "FORFANG Johann Andre",
+   "slug": "johann-andre-forfang"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2754",
+   "name": "LINDVIK Marius",
+   "slug": "marius-lindvik"
+  },
+  {
+   "country": "AUT",
+   "external_id": "24",
+   "name": "FETTNER Manuel",
+   "slug": "manuel-fettner"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2604",
+   "name": "NAKAMURA Naoki",
+   "slug": "naoki-nakamura"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3314",
+   "name": "SUNDAL Kristoffer Eriksen",
+   "slug": "kristoffer-eriksen-sundal"
+  },
+  {
+   "country": "FRA",
+   "external_id": "3331",
+   "name": "FOUBERT Valentin",
+   "slug": "valentin-foubert"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3520",
+   "name": "ORTNER Maximilian",
+   "slug": "maximilian-ortner"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3462",
+   "name": "SCHUSTER Jonas",
+   "slug": "jonas-schuster"
+  },
+  {
+   "country": "SUI",
+   "external_id": "1728",
+   "name": "DESCHWANDEN Gregor",
+   "slug": "gregor-deschwanden"
+  },
+  {
+   "country": "BUL",
+   "external_id": "580",
+   "name": "ZOGRAFSKI Władimir",
+   "slug": "wladimir-zografski"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3269",
+   "name": "NAITO Tomofumi",
+   "slug": "tomofumi-naito"
+  },
+  {
+   "country": "FIN",
+   "external_id": "2457",
+   "name": "AALTO Antti",
+   "slug": "antti-aalto"
+  },
+  {
+   "country": "POL",
+   "external_id": "3779",
+   "name": "TOMASIAK Kacper",
+   "slug": "kacper-tomasiak"
+  },
+  {
+   "country": "FIN",
+   "external_id": "2656",
+   "name": "KYTOSAHO Niko",
+   "slug": "niko-kytosaho"
+  },
+  {
+   "country": "GER",
+   "external_id": "2317",
+   "name": "WELLINGER Andreas",
+   "slug": "andreas-wellinger"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2538",
+   "name": "GRANERUD Halvor Egner",
+   "slug": "halvor-egner-granerud"
+  },
+  {
+   "country": "SLO",
+   "external_id": "2549",
+   "name": "ZAJC Timi",
+   "slug": "timi-zajc"
+  },
+  {
+   "country": "GER",
+   "external_id": "2166",
+   "name": "GEIGER Karl",
+   "slug": "karl-geiger"
+  },
+  {
+   "country": "GER",
+   "external_id": "1895",
+   "name": "PASCHKE Pius",
+   "slug": "pius-paschke"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3830",
+   "name": "LANGMO Isak Andreas",
+   "slug": "isak-andreas-langmo"
+  },
+  {
+   "country": "POL",
+   "external_id": "466",
+   "name": "STOCH Kamil",
+   "slug": "kamil-stoch"
+  },
+  {
+   "country": "SUI",
+   "external_id": "2717",
+   "name": "HAUSWIRTH Sandro",
+   "slug": "sandro-hauswirth"
+  },
+  {
+   "country": "POL",
+   "external_id": "916",
+   "name": "ŻYŁA Piotr",
+   "slug": "piotr-zyla"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2191",
+   "name": "SATO Yukiya",
+   "slug": "yukiya-sato"
+  },
+  {
+   "country": "USA",
+   "external_id": "3912",
+   "name": "COLBY Jason",
+   "slug": "jason-colby"
+  },
+  {
+   "country": "USA",
+   "external_id": "2426",
+   "name": "BICKNER Kevin",
+   "slug": "kevin-bickner"
+  },
+  {
+   "country": "EST",
+   "external_id": "2572",
+   "name": "AIGRO Artti",
+   "slug": "artti-aigro"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3282",
+   "name": "OESTVOLD Benjamin",
+   "slug": "benjamin-oestvold"
+  },
+  {
+   "country": "POL",
+   "external_id": "1131",
+   "name": "KOT Maciej",
+   "slug": "maciej-kot"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3322",
+   "name": "OBLAK Rok",
+   "slug": "rok-oblak"
+  },
+  {
+   "country": "USA",
+   "external_id": "3913",
+   "name": "FRANTZ Tate",
+   "slug": "tate-frantz"
+  },
+  {
+   "country": "KAZ",
+   "external_id": "3572",
+   "name": "MIZIERNYCH Ilja",
+   "slug": "ilja-miziernych"
+  },
+  {
+   "country": "POL",
+   "external_id": "1760",
+   "name": "WĄSEK Paweł",
+   "slug": "pawel-wasek"
+  },
+  {
+   "country": "POL",
+   "external_id": "1122",
+   "name": "KUBACKI Dawid",
+   "slug": "dawid-kubacki"
+  },
+  {
+   "country": "AUT",
+   "external_id": "2177",
+   "name": "AIGNER Clemens",
+   "slug": "clemens-aigner"
+  },
+  {
+   "country": "SUI",
+   "external_id": "69",
+   "name": "AMMANN Simon",
+   "slug": "simon-ammann"
+  },
+  {
+   "country": "SUI",
+   "external_id": "3826",
+   "name": "TRUNZ Felix",
+   "slug": "felix-trunz"
+  },
+  {
+   "country": "SVK",
+   "external_id": "3865",
+   "name": "KAPUSTIK Hektor",
+   "slug": "hektor-kapustik"
+  },
+  {
+   "country": "JPN",
+   "external_id": "3990",
+   "name": "KOBAYASHI Sakutaro",
+   "slug": "sakutaro-kobayashi"
+  },
+  {
+   "country": "CZE",
+   "external_id": "297",
+   "name": "KOUDELKA Roman",
+   "slug": "roman-koudelka"
+  },
+  {
+   "country": "AUT",
+   "external_id": "3519",
+   "name": "MUELLER Markus",
+   "slug": "markus-mueller"
+  },
+  {
+   "country": "ITA",
+   "external_id": "2470",
+   "name": "INSAM Alex",
+   "slug": "alex-insam"
+  },
+  {
+   "country": "KAZ",
+   "external_id": "3251",
+   "name": "WASILJEW Danił",
+   "slug": "danil-wasiljew"
+  },
+  {
+   "country": "ITA",
+   "external_id": "3257",
+   "name": "BRESADOLA Giovanni",
+   "slug": "giovanni-bresadola"
+  },
+  {
+   "country": "FIN",
+   "external_id": "2706",
+   "name": "NOUSIAINEN Eetu",
+   "slug": "eetu-nousiainen"
+  },
+  {
+   "country": "UKR",
+   "external_id": "2735",
+   "name": "MARUSIAK Jewhen",
+   "slug": "jewhen-marusiak"
+  },
+  {
+   "country": "NOR",
+   "external_id": "2616",
+   "name": "PEDERSEN Robin",
+   "slug": "robin-pedersen"
+  },
+  {
+   "country": "ITA",
+   "external_id": "3328",
+   "name": "CECON Francesco",
+   "slug": "francesco-cecon"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3627",
+   "name": "GUNDERSRUD Adrian Thon",
+   "slug": "adrian-thon-gundersrud"
+  },
+  {
+   "country": "FIN",
+   "external_id": "3505",
+   "name": "PALOSAARI Vilho",
+   "slug": "vilho-palosaari"
+  },
+  {
+   "country": "SLO",
+   "external_id": "4005",
+   "name": "JANCAR Ziga",
+   "slug": "ziga-jancar"
+  },
+  {
+   "country": "SUI",
+   "external_id": "3739",
+   "name": "KESSELI Juri",
+   "slug": "juri-kesseli"
+  },
+  {
+   "country": "GER",
+   "external_id": "3212",
+   "name": "ROTH Luca",
+   "slug": "luca-roth"
+  },
+  {
+   "country": "POL",
+   "external_id": "1211",
+   "name": "ZNISZCZOŁ Aleksander",
+   "slug": "aleksander-zniszczol"
+  },
+  {
+   "country": "FIN",
+   "external_id": "1960",
+   "name": "MAATTA Jarkko",
+   "slug": "jarkko-maatta"
+  },
+  {
+   "country": "GER",
+   "external_id": "3589",
+   "name": "BAYER Ben",
+   "slug": "ben-bayer"
+  },
+  {
+   "country": "SLO",
+   "external_id": "3317",
+   "name": "MOGEL Zak",
+   "slug": "zak-mogel"
+  },
+  {
+   "country": "USA",
+   "external_id": "3100",
+   "name": "URLAUB Andrew",
+   "slug": "andrew-urlaub"
+  },
+  {
+   "country": "SUI",
+   "external_id": "2995",
+   "name": "WASSER Yanick",
+   "slug": "yanick-wasser"
+  },
+  {
+   "country": "SUI",
+   "external_id": "2243",
+   "name": "PEIER Killian",
+   "slug": "killian-peier"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2304",
+   "name": "KOBAYASHI Junshiro",
+   "slug": "junshiro-kobayashi"
+  },
+  {
+   "country": "UKR",
+   "external_id": "1603",
+   "name": "KALINICZENKO Witalij",
+   "slug": "witalij-kaliniczenko"
+  },
+  {
+   "country": "POL",
+   "external_id": "3547",
+   "name": "JONIAK Klemens",
+   "slug": "klemens-joniak"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3362",
+   "name": "STROEM Joergen Oliver",
+   "slug": "joergen-oliver-stroem"
+  },
+  {
+   "country": "CAN",
+   "external_id": "1406",
+   "name": "BOYD-CLOWES Mackenzie",
+   "slug": "mackenzie-boyd-clowes"
+  },
+  {
+   "country": "JPN",
+   "external_id": "2748",
+   "name": "SATO Keiichi",
+   "slug": "keiichi-sato"
+  },
+  {
+   "country": "NOR",
+   "external_id": "3448",
+   "name": "STRAND Soelve Jokerud",
+   "slug": "soelve-jokerud-strand"
+  }
+ ]
+}

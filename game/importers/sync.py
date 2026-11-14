@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, time
+from pathlib import Path
 
 from django.db import transaction
 from django.utils import timezone
@@ -11,6 +12,7 @@ from game import rules
 from game.models import Competition, Jumper, Result, Weekend
 
 from . import skijumping_pl as sp
+from . import snapshot
 
 DEFAULT_START = time(12, 0)  # strona podaje tylko daty - godziny poprawiamy w adminie
 
@@ -102,38 +104,39 @@ class ResultsReport:
 
 
 @transaction.atomic
-def import_results(
+def save_results(
     competition: Competition,
-    page_html: str,
-    profile_fetcher: Callable[[str], str] | None = None,
+    rows: list[sp.ResultRow],
+    genders: dict[str, str] | None = None,
 ) -> ResultsReport:
-    """Zapisuje wyniki konkursu (miejsca w klasyfikacji płci) ze strony z wynikami."""
-    parsed = sp.parse_results(page_html)
+    """Zapisuje wyniki konkursu (miejsca w klasyfikacji płci).
+
+    `genders` (id zawodnika -> "M"/"K") służy do ustalenia płci nowych zawodników w konkursach
+    mieszanych; w pozostałych płeć wynika z typu konkursu.
+    """
+    genders = genders or {}
     report = ResultsReport()
     known = {j.external_id: j for j in Jumper.objects.exclude(external_id="")}
 
-    for row in parsed.rows:
+    for row in rows:
         if row.external_id in known:
             continue
-        gender = competition.gender
-        if gender == rules.MIXED:
-            # Konkurs mieszany: płeć nieznanego zawodnika bierzemy z jego profilu.
-            gender = ""
-            if profile_fetcher:
-                gender = sp.parse_profile_gender(
-                    profile_fetcher(sp.profile_path(row.external_id, row.slug))
-                )
-            if not gender:
-                report.unknown_gender.append(f"{row.name} ({row.external_id})")
-                continue
+        gender = (
+            genders.get(row.external_id, "")
+            if competition.gender == rules.MIXED
+            else (competition.gender)
+        )
+        if not gender:
+            report.unknown_gender.append(f"{row.name} ({row.external_id})")
+            continue
         known[row.external_id] = Jumper.objects.create(
             name=row.name, country=row.country, gender=gender, external_id=row.external_id
         )
         report.created_jumpers.append(row.name)
 
     gender_by_id = {ext: j.gender for ext, j in known.items()}
-    ranks = sp.gender_ranks(parsed.rows, gender_by_id, competition.gender)
-    for row in parsed.rows:
+    ranks = sp.gender_ranks(rows, gender_by_id, competition.gender)
+    for row in rows:
         jumper = known.get(row.external_id)
         if jumper is None:
             continue
@@ -145,3 +148,47 @@ def import_results(
         )
         report.saved += 1
     return report
+
+
+def import_results(
+    competition: Competition,
+    page_html: str,
+    profile_fetcher: Callable[[str], str] | None = None,
+) -> ResultsReport:
+    """Zapisuje wyniki ze strony skijumping.pl (pobranej bezpośrednio, np. lokalnie)."""
+    rows = sp.parse_results(page_html).rows
+    genders: dict[str, str] = {}
+    if competition.gender == rules.MIXED and profile_fetcher:
+        known_ids = set(
+            Jumper.objects.exclude(external_id="").values_list("external_id", flat=True)
+        )
+        for row in rows:
+            if row.external_id not in known_ids:
+                page = profile_fetcher(sp.profile_path(row.external_id, row.slug))
+                if gender := sp.parse_profile_gender(page):
+                    genders[row.external_id] = gender
+    return save_results(competition, rows, genders)
+
+
+def load_snapshot(directory: Path) -> dict[str, int]:
+    """Wczytuje do bazy dane z plików-migawek (kalendarz, skoczkowie, wyniki)."""
+    summary = {"competitions_created": 0, "results_saved": 0, "results_skipped": 0}
+
+    calendar = snapshot.read_calendar(directory)
+    if any(calendar.values()):
+        summary["competitions_created"] = import_calendar(
+            calendar["men"], calendar["women"], calendar["ms"]
+        )["created"]
+
+    for gender, rows in snapshot.read_jumpers(directory).items():
+        import_jumpers(rows, gender)
+
+    genders = snapshot.read_genders(directory)
+    for external_id, rows in snapshot.read_results(directory).items():
+        competition = Competition.objects.filter(external_id=external_id).first()
+        if competition is None:
+            summary["results_skipped"] += 1
+            continue
+        report = save_results(competition, rows, genders)
+        summary["results_saved"] += report.saved
+    return summary

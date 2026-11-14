@@ -1,0 +1,41 @@
+name: Pobierz dane ze skijumping.pl
+
+# Serwer (darmowy PythonAnywhere) nie ma dostępu do skijumping.pl, więc dane pobiera GitHub
+# i zapisuje jako pliki w data/skijumping. Serwer wczytuje je po `git pull`.
+on:
+  schedule:
+    - cron: "17 * * * *" # co godzinę (czas UTC)
+  workflow_dispatch: # ręczne uruchomienie z zakładki Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-results
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Pobierz dane
+        env:
+          DJANGO_DEBUG: "1"
+        run: uv run --no-dev python manage.py fetch_snapshot
+
+      - name: Zapisz zmiany w repozytorium
+        run: |
+          if [ -n "$(git status --porcelain data)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data
+            git commit -m "Dane ze skijumping.pl (automat)"
+            git pull --rebase
+            git push
+          else
+            echo "Brak zmian."
+          fi
