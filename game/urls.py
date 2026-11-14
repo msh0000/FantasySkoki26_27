@@ -13,5 +13,6 @@ urlpatterns = [
     path("transfery/<int:weekend_id>/", views.transfers, name="transfers_for"),
     path("transfery/<int:weekend_id>/otworz/", views.transfer_open, name="transfer_open"),
     path("transfery/<int:weekend_id>/wykonaj/", views.transfer_make, name="transfer_make"),
-    path("transfery/<int:weekend_id>/pomin/", views.transfer_skip, name="transfer_skip"),
+    path("transfery/<int:weekend_id>/potwierdz/", views.transfer_confirm, name="transfer_confirm"),
+    path("transfery/<int:weekend_id>/zakoncz/", views.transfer_pass, name="transfer_pass"),
 ]

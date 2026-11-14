@@ -14,20 +14,15 @@ def setup(django_user_model):
         django_user_model.objects.create_user(f"u{i}", password="haslo-12345") for i in range(1, 4)
     ]
     players = [Player.objects.create(user=u, name=f"G{i}", order=i) for i, u in enumerate(users, 1)]
-    owned = []
-    for index, player in enumerate(players, 1):
-        owned.append(
-            Jumper.objects.create(
-                name=f"WLASNY{index}",
-                country="POL",
-                gender="M",
-                owner=player,
-                external_id=f"o{index}",
-            )
+    owned = [
+        Jumper.objects.create(
+            name=f"WLASNY{i}", country="POL", gender="M", owner=player, external_id=f"o{i}"
         )
+        for i, player in enumerate(players, 1)
+    ]
     free = [
         Jumper.objects.create(name=f"WOLNY{i}", country="AUT", gender="M", external_id=f"f{i}")
-        for i in range(1, 5)
+        for i in range(1, 6)
     ]
     weekend = Weekend.objects.create(name="Lillehammer", start_date=timezone.now().date())
     competition = Competition.objects.create(
@@ -51,21 +46,48 @@ def login(client, user):
     client.login(username=user.username, password="haslo-12345")
 
 
-def post_transfer(client, setup, player_index, out_index, in_index, **extra):
+def url(name, setup):
+    return reverse(name, args=[setup["weekend"].pk])
+
+
+def transfer(client, setup, player_index, out_jumper, in_jumper, **extra):
     return client.post(
-        reverse("transfer_make", args=[setup["weekend"].pk]),
+        url("transfer_make", setup),
         {
             "player": setup["players"][player_index].pk,
-            "out": setup["owned"][out_index].pk,
-            "in": setup["free"][in_index].pk,
+            "out": out_jumper.pk,
+            "in": in_jumper.pk,
             **extra,
         },
         follow=True,
     )
 
 
+def confirm_skips(client, setup, player_index, **extra):
+    return client.post(
+        url("transfer_confirm", setup),
+        {"player": setup["players"][player_index].pk, **extra},
+        follow=True,
+    )
+
+
+def pass_turn(client, setup, player_index, **extra):
+    return client.post(
+        url("transfer_pass", setup),
+        {"player": setup["players"][player_index].pk, **extra},
+        follow=True,
+    )
+
+
+def statuses(setup):
+    return {slot.player.name: slot.status for slot in setup["weekend"].queue.all()}
+
+
 def open_window(setup):
-    services.build_queue(setup["weekend"])
+    services.build_queue(setup["weekend"])  # remis na 0: kolejka G3, G2, G1
+
+
+# --- Okno transferowe ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -78,79 +100,136 @@ def test_transfers_page_before_window_opens(client, setup):
 
 @pytest.mark.django_db
 def test_only_staff_can_open_window(client, setup, django_user_model):
-    url = reverse("transfer_open", args=[setup["weekend"].pk])
     login(client, setup["users"][0])
-    assert client.post(url).status_code == 403
+    assert client.post(url("transfer_open", setup)).status_code == 403
     staff = django_user_model.objects.create_user("szef", password="haslo-12345", is_staff=True)
     login(client, staff)
-    assert client.post(url).status_code == 302
+    assert client.post(url("transfer_open", setup)).status_code == 302
     assert setup["weekend"].queue.count() == 3
 
 
 @pytest.mark.django_db
 def test_transfer_blocked_until_window_open(client, setup):
     login(client, setup["users"][0])
-    response = post_transfer(client, setup, 0, 0, 0)
+    response = transfer(client, setup, 0, setup["owned"][0], setup["free"][0])
     assert "nie zostało jeszcze otwarte" in response.content.decode()
     assert Transfer.objects.count() == 0
 
 
+# --- Tura gracza: nielimitowane transfery, koniec tury oddaje pałeczkę ---------------------------
+
+
 @pytest.mark.django_db
-def test_queue_order_enforced_and_first_transfer_succeeds(client, setup):
-    open_window(setup)  # remis na 0: G3 pierwszy, potem G2, potem G1
+def test_player_out_of_turn_cannot_transfer(client, setup):
+    open_window(setup)
     login(client, setup["users"][0])
-    response = post_transfer(client, setup, 0, 0, 0)  # G1 przed swoją kolejką
-    assert "Potwierdź, że gracze" in response.content.decode()
+    response = transfer(client, setup, 0, setup["owned"][0], setup["free"][0])  # G1 przed kolejką
+    assert "jeszcze nie Twoja kolej" in response.content.decode()
     assert Transfer.objects.count() == 0
 
-    response = post_transfer(client, setup, 2, 2, 0)  # ktoś robi ruch za G3
-    assert "WLASNY3 → WOLNY1" in response.content.decode()
-    assert Transfer.objects.get().made_by == setup["users"][0]
-    setup["free"][0].refresh_from_db()
-    assert setup["free"][0].owner == setup["players"][2]
-    assert setup["weekend"].queue.get(player=setup["players"][2]).status == QueueSlot.DONE
+
+@pytest.mark.django_db
+def test_player_can_make_unlimited_transfers_in_own_turn(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    g3 = setup["players"][2]
+
+    transfer(client, setup, 2, setup["owned"][2], setup["free"][0])
+    assert statuses(setup)["G3"] == QueueSlot.PENDING  # transfer nie kończy tury
+    # Drugi i trzeci transfer w tej samej turze: oddaje to, co dopiero wziął.
+    transfer(client, setup, 2, setup["free"][0], setup["free"][1])
+    response = transfer(client, setup, 2, setup["free"][1], setup["free"][2])
+    assert "Kara: -10 pkt" in response.content.decode()
+    assert Transfer.objects.filter(player=g3).count() == 3
+    assert statuses(setup)["G3"] == QueueSlot.PENDING
+    assert not services.can_transfer(setup["weekend"], setup["players"][1])  # G2 nadal czeka
 
 
 @pytest.mark.django_db
-def test_skip_requires_confirmation_then_unblocks_next(client, setup):
+def test_ending_turn_passes_baton_and_records_whether_transfers_were_made(client, setup):
     open_window(setup)
     login(client, setup["users"][0])
-    url = reverse("transfer_skip", args=[setup["weekend"].pk])
-    g3, g2, _ = setup["players"][2], setup["players"][1], setup["players"][0]
+    transfer(client, setup, 2, setup["owned"][2], setup["free"][0])
+    pass_turn(client, setup, 2)
+    assert statuses(setup)["G3"] == QueueSlot.DONE  # coś zrobił
+    assert services.can_transfer(setup["weekend"], setup["players"][1])  # teraz G2
 
-    response = client.post(url, {"player": g2.pk}, follow=True)  # G2 chce pominąć przed G3
-    assert "Potwierdź, że pominięcie zgłosili: G3" in response.content.decode()
-    assert setup["weekend"].queue.get(player=g2).status == QueueSlot.PENDING
-
-    client.post(url, {"player": g3.pk}, follow=True)  # G3 jest pierwszy - bez potwierdzenia
-    assert setup["weekend"].queue.get(player=g3).status == QueueSlot.SKIPPED
-
-    client.post(url, {"player": g2.pk, "confirm": "1"}, follow=True)
-    assert setup["weekend"].queue.get(player=g2).status == QueueSlot.SKIPPED
-    assert services.can_transfer(setup["weekend"], setup["players"][0])
+    pass_turn(client, setup, 1)  # G2 nic nie zrobił
+    assert statuses(setup)["G2"] == QueueSlot.SKIPPED
 
 
 @pytest.mark.django_db
-def test_extra_transfer_costs_points_after_queue_finishes(client, setup):
+def test_cannot_end_turn_before_earlier_players_resolved(client, setup):
     open_window(setup)
     login(client, setup["users"][0])
-    for index in (2, 1, 0):  # kolejka: G3, G2, G1
-        post_transfer(client, setup, index, index, index)
-    assert Transfer.objects.count() == 3
+    response = pass_turn(client, setup, 0)  # G1 jest ostatni w kolejce
+    assert "Najpierw potwierdź pominięcie" in response.content.decode()
+    assert statuses(setup)["G1"] == QueueSlot.PENDING
 
-    # Drugi transfer G1 (po kolejce): oddaje zawodnika wziętego przed chwilą, kosztuje 5 pkt.
-    client.post(
-        reverse("transfer_make", args=[setup["weekend"].pk]),
-        {
-            "player": setup["players"][0].pk,
-            "out": setup["free"][0].pk,
-            "in": setup["free"][3].pk,
-        },
-    )
+
+# --- Jeden przycisk: potwierdzenie pominięcia poprzednich --------------------------------------
+
+
+@pytest.mark.django_db
+def test_confirm_skips_earlier_players_and_makes_it_my_turn(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    response = confirm_skips(client, setup, 0)  # G1 potwierdza, że G3 i G2 pominęli
+    assert "Pominięci: G3, G2" in response.content.decode()
+    assert statuses(setup) == {
+        "G3": QueueSlot.SKIPPED,
+        "G2": QueueSlot.SKIPPED,
+        "G1": QueueSlot.PENDING,
+    }
+    # Teraz jego kolej: dowolnie wiele transferów, potem koniec.
+    transfer(client, setup, 0, setup["owned"][0], setup["free"][0])
+    transfer(client, setup, 0, setup["free"][0], setup["free"][1])
+    pass_turn(client, setup, 0)
+    assert statuses(setup)["G1"] == QueueSlot.DONE
     assert Transfer.objects.filter(player=setup["players"][0]).count() == 2
-    Result.objects.create(competition=setup["competition"], jumper=setup["free"][3], rank=1)
-    score = services.weekend_scores(setup["weekend"])[setup["players"][0].pk]
+
+
+@pytest.mark.django_db
+def test_confirmed_skip_keeps_done_status_for_player_who_already_transferred(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    transfer(client, setup, 2, setup["owned"][2], setup["free"][0])  # G3 zrobił ruch, nie zakończył
+    confirm_skips(client, setup, 1)  # G2 potwierdza pominięcie G3
+    assert statuses(setup)["G3"] == QueueSlot.DONE
+
+
+@pytest.mark.django_db
+def test_confirm_does_nothing_when_nobody_is_waiting(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    response = confirm_skips(client, setup, 2)  # G3 jest pierwszy
+    assert "to już Twoja kolej" in response.content.decode()
+    assert set(statuses(setup).values()) == {QueueSlot.PENDING}
+
+
+# --- Po przejściu kolejki: kto pierwszy -----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_free_for_all_after_queue_finishes_with_fees(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    for index in (2, 1, 0):
+        pass_turn(client, setup, index) if index != 0 else None
+    confirm_skips(client, setup, 0)  # G1: wszyscy przed nim pominęli
+    pass_turn(client, setup, 0)
+    assert set(statuses(setup).values()) == {QueueSlot.SKIPPED}
+
+    # Kolejka skończona: każdy może działać, w tym G2 przed G1.
+    transfer(client, setup, 1, setup["owned"][1], setup["free"][0])
+    transfer(client, setup, 1, setup["free"][0], setup["free"][1])  # drugi - kara
+    assert Transfer.objects.filter(player=setup["players"][1]).count() == 2
+    Result.objects.create(competition=setup["competition"], jumper=setup["free"][1], rank=1)
+    score = services.weekend_scores(setup["weekend"])[setup["players"][1].pk]
     assert ("Kara za dodatkowe transfery", -5) in score.lines
+
+
+# --- Blokada weekendu, uprawnienia, walidacja ---------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -159,13 +238,15 @@ def test_locked_weekend_rejects_players_but_staff_can_override(client, setup, dj
     setup["competition"].start_at = timezone.now() - timedelta(hours=1)
     setup["competition"].save()
     login(client, setup["users"][0])
-    response = post_transfer(client, setup, 2, 2, 0)
+    response = transfer(client, setup, 2, setup["owned"][2], setup["free"][0])
     assert "Weekend już się rozpoczął" in response.content.decode()
     assert Transfer.objects.count() == 0
+    assert "Weekend już się rozpoczął" in confirm_skips(client, setup, 0).content.decode()
+    assert "Weekend już się rozpoczął" in pass_turn(client, setup, 2).content.decode()
 
     staff = django_user_model.objects.create_user("szef", password="haslo-12345", is_staff=True)
     login(client, staff)
-    post_transfer(client, setup, 0, 0, 0, override="1")  # admin: poza kolejką i blokadą
+    transfer(client, setup, 0, setup["owned"][0], setup["free"][0], override="1")
     assert Transfer.objects.count() == 1
 
 
@@ -173,7 +254,7 @@ def test_locked_weekend_rejects_players_but_staff_can_override(client, setup, dj
 def test_regular_user_cannot_use_override(client, setup):
     open_window(setup)
     login(client, setup["users"][0])
-    post_transfer(client, setup, 0, 0, 0, override="1")  # G1 poza kolejką, "override" ignorowany
+    transfer(client, setup, 0, setup["owned"][0], setup["free"][0], override="1")
     assert Transfer.objects.count() == 0
 
 
@@ -183,16 +264,12 @@ def test_transfer_requires_both_jumpers_and_rejects_gender_mismatch(client, setu
     woman = Jumper.objects.create(name="KOBIETA", country="SLO", gender="K", external_id="w1")
     login(client, setup["users"][0])
     response = client.post(
-        reverse("transfer_make", args=[setup["weekend"].pk]),
+        url("transfer_make", setup),
         {"player": setup["players"][2].pk, "out": setup["owned"][2].pk, "in": ""},
         follow=True,
     )
     assert "Wybierz zawodnika" in response.content.decode()
-    response = client.post(
-        reverse("transfer_make", args=[setup["weekend"].pk]),
-        {"player": setup["players"][2].pk, "out": setup["owned"][2].pk, "in": woman.pk},
-        follow=True,
-    )
+    response = transfer(client, setup, 2, setup["owned"][2], woman)
     assert "tej samej płci" in response.content.decode()
     assert Transfer.objects.count() == 0
 
@@ -200,8 +277,25 @@ def test_transfer_requires_both_jumpers_and_rejects_gender_mismatch(client, setu
 @pytest.mark.django_db
 def test_get_requests_to_actions_are_not_allowed(client, setup):
     login(client, setup["users"][0])
-    for name in ("transfer_make", "transfer_skip", "transfer_open"):
-        assert client.get(reverse(name, args=[setup["weekend"].pk])).status_code == 405
+    for name in ("transfer_make", "transfer_confirm", "transfer_pass", "transfer_open"):
+        assert client.get(url(name, setup)).status_code == 405
+
+
+# --- Wygląd strony ------------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_page_shows_confirm_button_for_waiting_and_end_turn_for_current_player(client, setup):
+    open_window(setup)
+    login(client, setup["users"][0])
+    html = client.get(reverse("transfers")).content.decode()
+    assert "pominęli transfery" in html  # G1 i G2 czekają, więc mają przycisk potwierdzenia
+    assert "Zakończ moją kolejkę" in html  # G3 jest na ruchu
+    assert html.count("oddaj pałeczkę dalej") == 1  # przycisk tylko u gracza na ruchu
+    assert 'name="confirm"' not in html  # nie ma już drugiego pola potwierdzenia
+
+
+# --- Zamrażanie składów -------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -225,69 +319,3 @@ def test_started_competition_rosters_are_frozen_before_roster_changes(setup):
     assert competition.roster_locked is True
     scores = services.weekend_scores(setup["weekend"])
     assert scores[setup["players"][0].pk].total == 50 + 10  # nadal liczy się stary skład
-
-
-@pytest.mark.django_db
-def test_transfer_with_confirmation_skips_earlier_players_and_executes(client, setup):
-    open_window(setup)  # kolejka: G3, G2, G1
-    login(client, setup["users"][0])
-    g1, g2, g3 = setup["players"]
-
-    # Bez potwierdzenia: G1 jest blokowany i dostaje pytanie o pominięcie G3 i G2.
-    response = post_transfer(client, setup, 0, 0, 0)
-    assert "Potwierdź, że gracze G3, G2 zgłosili pominięcie" in response.content.decode()
-    assert Transfer.objects.count() == 0
-    assert setup["weekend"].queue.filter(status=QueueSlot.PENDING).count() == 3
-
-    # Z potwierdzeniem: G3 i G2 są pominięci, a transfer G1 wykonuje się od razu.
-    response = post_transfer(client, setup, 0, 0, 0, confirm="1")
-    html = response.content.decode()
-    assert "WLASNY1 → WOLNY1" in html
-    assert "Pominięci: G3, G2" in html
-    queue = {slot.player_id: slot.status for slot in setup["weekend"].queue.all()}
-    assert queue == {
-        g3.pk: QueueSlot.SKIPPED,
-        g2.pk: QueueSlot.SKIPPED,
-        g1.pk: QueueSlot.DONE,
-    }
-    assert Transfer.objects.get().player == g1
-
-
-@pytest.mark.django_db
-def test_failed_transfer_does_not_skip_anyone(client, setup):
-    open_window(setup)
-    login(client, setup["users"][0])
-    # G1 próbuje oddać cudzego zawodnika (G2) - transfer się nie uda, pominięcia mają się cofnąć.
-    response = client.post(
-        reverse("transfer_make", args=[setup["weekend"].pk]),
-        {
-            "player": setup["players"][0].pk,
-            "out": setup["owned"][1].pk,
-            "in": setup["free"][0].pk,
-            "confirm": "1",
-        },
-        follow=True,
-    )
-    assert "nie należy do tego gracza" in response.content.decode()
-    assert setup["weekend"].queue.filter(status=QueueSlot.PENDING).count() == 3
-
-
-@pytest.mark.django_db
-def test_skip_with_confirmation_also_skips_earlier_players(client, setup):
-    open_window(setup)
-    login(client, setup["users"][0])
-    client.post(
-        reverse("transfer_skip", args=[setup["weekend"].pk]),
-        {"player": setup["players"][0].pk, "confirm": "1"},
-        follow=True,
-    )
-    assert setup["weekend"].queue.filter(status=QueueSlot.SKIPPED).count() == 3
-
-
-@pytest.mark.django_db
-def test_transfer_form_shows_confirmation_checkbox_for_waiting_player(client, setup):
-    open_window(setup)
-    login(client, setup["users"][0])
-    html = client.get(reverse("transfers")).content.decode()
-    assert "zgłosili pominięcie transferów" in html
-    assert 'name="confirm"' in html

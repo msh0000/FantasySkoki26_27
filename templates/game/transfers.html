@@ -50,16 +50,30 @@
 {% if has_queue or user.is_staff %}
 <article>
   <h3>Wykonaj transfer</h3>
-  <p class="muted">Możesz zrobić ruch także za innego gracza (np. po uzgodnieniu na Messengerze). Pierwszy transfer w weekendzie jest darmowy, każdy kolejny kosztuje -5 pkt.</p>
+  <p class="muted">
+    W swojej kolejce możesz zrobić dowolnie wiele transferów (pierwszy darmowy, każdy kolejny -5 pkt),
+    a potem klikasz „Zakończ moją kolejkę”, żeby oddać pałeczkę dalej. Możesz też zrobić ruch za innego
+    gracza (np. po uzgodnieniu na Messengerze).
+  </p>
 
   {% for card in cards %}
   <details {% if card.is_me %}open{% endif %}>
     <summary>
       <span {% if card.is_me %}class="me"{% endif %}>{{ card.player.name }}</span>
-      <span class="muted">{% if card.status_label %} - {{ card.status_label }}{% endif %}{% if card.made %}, transferów: {{ card.made }}{% endif %}</span>
+      <span class="muted">{% if card.status_label %} - {{ card.status_label }}{% endif %}{% if card.is_turn %} (jego kolej){% endif %}{% if card.made %}, transferów: {{ card.made }}{% endif %}</span>
     </summary>
 
-    {% if card.can_act or card.waiting_for or user.is_staff %}
+    {% if has_queue and card.waiting_for and not locked %}
+    <p>Przed {{ card.player.name }} w kolejce: <strong>{{ card.waiting_for|join:", " }}</strong>.</p>
+    <form method="post" action="{% url 'transfer_confirm' weekend.pk %}"
+          onsubmit="return confirm('Potwierdzasz, że {{ card.waiting_for|join:", " }} pominęli swoje transfery?')">
+      {% csrf_token %}
+      <input type="hidden" name="player" value="{{ card.player.pk }}">
+      <button type="submit" class="outline">Potwierdzam, że {{ card.waiting_for|join:", " }} pominęli transfery</button>
+    </form>
+    {% endif %}
+
+    {% if card.can_act or user.is_staff %}
     <form method="post" action="{% url 'transfer_make' weekend.pk %}">
       {% csrf_token %}
       <input type="hidden" name="player" value="{{ card.player.pk }}">
@@ -81,29 +95,20 @@
         </select>
       </label>
       {% if card.made %}<p class="muted">Ten transfer będzie kosztował {{ card.next_fee }} pkt.</p>{% endif %}
-      {% if card.waiting_for %}
-      <label><input type="checkbox" name="confirm" value="1">
-        Potwierdzam, że gracze {{ card.waiting_for|join:", " }} zgłosili pominięcie transferów
-        (zostaną pominięci, a mój transfer wykona się od razu).</label>
-      {% endif %}
       {% if user.is_staff %}
       <label><input type="checkbox" name="override" value="1"> Tryb admina (pomiń kolejkę{% if locked %} i blokadę weekendu{% endif %})</label>
       {% endif %}
       <button type="submit">Wykonaj transfer</button>
     </form>
-    {% else %}
-      <p class="muted">Jeszcze nie ta kolej.{% if card.waiting_for %} Najpierw: {{ card.waiting_for|join:", " }}.{% endif %}</p>
+    {% elif has_queue and not card.waiting_for %}
+      <p class="muted">Ten gracz już zakończył swoją kolejkę. Gdy kolejka przejdzie przez wszystkich, każdy będzie mógł robić transfery (kto pierwszy).</p>
     {% endif %}
 
-    {% if has_queue and card.status == "pending" and not locked %}
-    <form method="post" action="{% url 'transfer_skip' weekend.pk %}">
+    {% if card.is_turn and not locked %}
+    <form method="post" action="{% url 'transfer_pass' weekend.pk %}">
       {% csrf_token %}
       <input type="hidden" name="player" value="{{ card.player.pk }}">
-      {% if card.waiting_for %}
-      <label><input type="checkbox" name="confirm" value="1" required>
-        Potwierdzam, że gracze {{ card.waiting_for|join:", " }} zgłosili pominięcie transferów.</label>
-      {% endif %}
-      <button type="submit" class="outline secondary">Pomiń transfer w tym weekendzie</button>
+      <button type="submit" class="outline secondary">Zakończ moją kolejkę (oddaj pałeczkę dalej)</button>
     </form>
     {% endif %}
   </details>

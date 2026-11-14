@@ -97,10 +97,10 @@ def test_queue_flow_worst_player_first_then_free_for_all(setup):
     assert not services.can_transfer(weekend, p1)
     assert services.players_to_confirm_skip(weekend, p1) == [p3, p2]
 
-    services.skip_turn(weekend, p3)
-    services.skip_turn(weekend, p2)
+    services.finish_turn(weekend, p3)
+    services.finish_turn(weekend, p2)
     assert services.can_transfer(weekend, p1)
-    services.skip_turn(weekend, p1)
+    services.finish_turn(weekend, p1)
     assert services.can_transfer(weekend, p3)  # po przejściu kolejki każdy może
 
 

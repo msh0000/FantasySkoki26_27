@@ -166,10 +166,17 @@ def players_to_confirm_skip(weekend: Weekend, player: Player) -> list[Player]:
     return [players[i] for i in ids]
 
 
-def skip_turn(weekend: Weekend, player: Player) -> None:
+def finish_turn(weekend: Weekend, player: Player) -> None:
+    """Kończy turę gracza w kolejce i oddaje pałeczkę dalej.
+
+    Status to "zrobił transfer", jeśli gracz wykonał choć jeden transfer w tym weekendzie,
+    a w przeciwnym razie "pominął". W swojej turze gracz może zrobić dowolnie wiele transferów
+    (kolejne ponad pierwszy kosztują punkty), a turę kończy dopiero ten krok.
+    """
     slot = weekend.queue.filter(player=player).first()
     if slot and slot.status == QueueSlot.PENDING:
-        slot.status = QueueSlot.SKIPPED
+        made = weekend.transfers.filter(player=player).exists()
+        slot.status = QueueSlot.DONE if made else QueueSlot.SKIPPED
         slot.save(update_fields=["status"])
 
 
@@ -204,10 +211,6 @@ def make_transfer(
     out_jumper.save(update_fields=["owner"])
     in_jumper.owner = player
     in_jumper.save(update_fields=["owner"])
-    slot = weekend.queue.filter(player=player).first()
-    if slot and slot.status == QueueSlot.PENDING:
-        slot.status = QueueSlot.DONE
-        slot.save(update_fields=["status"])
     return Transfer.objects.create(
         weekend=weekend, player=player, out_jumper=out_jumper, in_jumper=in_jumper, made_by=made_by
     )

@@ -1,7 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -140,6 +139,9 @@ def _transfer_context(request, weekend: Weekend) -> dict:
                 "status_label": dict(QueueSlot.STATUSES).get(status_by_player.get(player.pk), ""),
                 "can_act": rules.can_act_in_queue(queue, resolved, player.pk) if slots else False,
                 "waiting_for": [names[i] for i in waiting_for],
+                "is_turn": bool(slots)
+                and status_by_player.get(player.pk) == QueueSlot.PENDING
+                and not waiting_for,
                 "made": counts.get(player.pk, 0),
                 "next_fee": rules.transfer_fee(counts.get(player.pk, 0) + 1),
             }
@@ -194,6 +196,7 @@ def transfer_open(request, weekend_id):
 @login_required
 @require_POST
 def transfer_make(request, weekend_id):
+    """Transfer w turze gracza (dowolnie wiele). Tury nie kończy - robi to transfer_pass."""
     weekend = get_object_or_404(Weekend, pk=weekend_id)
     player = get_object_or_404(Player, pk=request.POST.get("player"))
     override = _override(request)
@@ -205,56 +208,57 @@ def transfer_make(request, weekend_id):
     if out_jumper is None or in_jumper is None:
         messages.error(request, "Wybierz zawodnika do oddania i zawodnika do wzięcia.")
         return redirect("transfers_for", weekend_id=weekend.pk)
-    waiting = [] if override else services.players_to_confirm_skip(weekend, player)
-    if waiting and request.POST.get("confirm") != "1":
-        names = ", ".join(p.name for p in waiting)
-        messages.error(
-            request, f"Potwierdź, że gracze {names} zgłosili pominięcie transferów (lub poczekaj)."
-        )
-        return redirect("transfers_for", weekend_id=weekend.pk)
     try:
-        with transaction.atomic():
-            # Potwierdzenie = poprzedni gracze w kolejce zostają pominięci, a ruch wykonuje się
-            # od razu. Gdy transfer się nie uda, pominięcia też się cofają.
-            for skipped in waiting:
-                services.skip_turn(weekend, skipped)
-            services.make_transfer(
-                weekend,
-                player,
-                out_jumper,
-                in_jumper,
-                made_by=request.user,
-                enforce_queue=not override,
-                enforce_lock=not override,
-            )
+        services.make_transfer(
+            weekend,
+            player,
+            out_jumper,
+            in_jumper,
+            made_by=request.user,
+            enforce_queue=not override,
+            enforce_lock=not override,
+        )
     except services.TransferError as error:
         messages.error(request, str(error))
     else:
         fee = rules.transfer_fee(services.transfers_made(weekend).get(player.pk, 0))
         suffix = f" Kara: {fee} pkt." if fee else ""
-        skipped_note = f" Pominięci: {', '.join(p.name for p in waiting)}." if waiting else ""
-        messages.success(
-            request, f"{player.name}: {out_jumper.name} → {in_jumper.name}.{suffix}{skipped_note}"
-        )
+        messages.success(request, f"{player.name}: {out_jumper.name} → {in_jumper.name}.{suffix}")
     return redirect("transfers_for", weekend_id=weekend.pk)
 
 
 @login_required
 @require_POST
-def transfer_skip(request, weekend_id):
+def transfer_confirm(request, weekend_id):
+    """Potwierdzenie, że gracze przed nami w kolejce pominęli swoje transfery."""
     weekend = get_object_or_404(Weekend, pk=weekend_id)
     player = get_object_or_404(Player, pk=request.POST.get("player"))
-    waiting = services.players_to_confirm_skip(weekend, player)
-    if waiting and request.POST.get("confirm") != "1" and not _override(request):
-        names = ", ".join(p.name for p in waiting)
-        messages.error(request, f"Potwierdź, że pominięcie zgłosili: {names}.")
-    elif weekend.is_locked() and not _override(request):
+    if weekend.is_locked() and not _override(request):
         messages.error(request, "Weekend już się rozpoczął.")
+        return redirect("transfers_for", weekend_id=weekend.pk)
+    waiting = services.players_to_confirm_skip(weekend, player)
+    if not waiting:
+        messages.info(request, "Nikt przed Tobą nie czeka - to już Twoja kolej.")
     else:
-        # Potwierdzenie obejmuje też poprzednich graczy w kolejce - oni też zostają pominięci.
-        for skipped in [] if _override(request) else waiting:
-            services.skip_turn(weekend, skipped)
-        services.skip_turn(weekend, player)
-        note = f" Pominięci razem z nim: {', '.join(p.name for p in waiting)}." if waiting else ""
-        messages.success(request, f"{player.name} pomija transfer w tym weekendzie.{note}")
+        for skipped in waiting:
+            services.finish_turn(weekend, skipped)
+        names = ", ".join(p.name for p in waiting)
+        messages.success(request, f"Pominięci: {names}. Teraz kolej: {player.name}.")
+    return redirect("transfers_for", weekend_id=weekend.pk)
+
+
+@login_required
+@require_POST
+def transfer_pass(request, weekend_id):
+    """Koniec tury gracza: oddaje pałeczkę następnemu w kolejce."""
+    weekend = get_object_or_404(Weekend, pk=weekend_id)
+    player = get_object_or_404(Player, pk=request.POST.get("player"))
+    override = _override(request)
+    if weekend.is_locked() and not override:
+        messages.error(request, "Weekend już się rozpoczął.")
+    elif not override and services.players_to_confirm_skip(weekend, player):
+        messages.error(request, "Najpierw potwierdź pominięcie graczy przed Tobą w kolejce.")
+    else:
+        services.finish_turn(weekend, player)
+        messages.success(request, f"{player.name} kończy swoją kolejkę.")
     return redirect("transfers_for", weekend_id=weekend.pk)
