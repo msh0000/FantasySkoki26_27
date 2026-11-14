@@ -238,3 +238,14 @@ def test_draft_form_cannot_pick_inactive_jumper(client, world, django_user_model
     response = client.post(reverse("draft"), draft_data(world, {0: ([0], None)}))
     assert response.status_code == 200
     assert Jumper.objects.filter(owner__isnull=False).count() == 0
+
+
+@pytest.mark.django_db
+def test_draft_without_players_explains_what_to_do(client, django_user_model):
+    staff = django_user_model.objects.create_user("szef", password="haslo-12345", is_staff=True)
+    login(client, staff)
+    html = client.get(reverse("draft")).content.decode()
+    assert "Nie ma jeszcze żadnych graczy" in html
+    assert "Zapisz składy" not in html
+    response = client.post(reverse("draft"), {}, follow=True)
+    assert "Składy zapisane" not in response.content.decode()

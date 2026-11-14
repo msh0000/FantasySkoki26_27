@@ -7,6 +7,11 @@
     Każdy gracz: 5 skoczków i 1 skoczkini. Pola mogą zostać puste. Zapis <strong>zastępuje</strong>
     dotychczasowe składy wszystkich graczy. Ten sam zawodnik nie może być u dwóch osób.
   </p>
+  {% if not forms %}
+  <p><strong>Nie ma jeszcze żadnych graczy.</strong> Dodaj ich w panelu admina:
+    <a href="{% url 'admin:game_player_add' %}">Players &rarr; Add player</a>
+    (wybierz konto użytkownika i wpisz nazwę), a potem wróć tutaj.</p>
+  {% else %}
   <form method="post">
     {% csrf_token %}
     {% for form in forms %}
@@ -23,5 +28,6 @@
     {% endfor %}
     <button type="submit">Zapisz składy</button>
   </form>
+  {% endif %}
 </article>
 {% endblock %}

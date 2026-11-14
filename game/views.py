@@ -98,7 +98,9 @@ def draft(request):
         raise PermissionDenied
     players = list(Player.objects.all())
     forms = [DraftForm(p, request.POST or None, prefix=str(p.pk)) for p in players]
-    if request.method == "POST":
+    if request.method == "POST" and not forms:
+        messages.error(request, "Nie ma żadnych graczy - najpierw dodaj ich w panelu admina.")
+    elif request.method == "POST":
         if all([form.is_valid() for form in forms]):
             selection = {form.player: form.chosen() for form in forms}
             conflicts = services.draft_conflicts(selection)
