@@ -24,21 +24,184 @@
   {% else %}<p class="muted">Brak skoczkini.</p>{% endif %}
 </article>
 
+{% if is_me %}
 <article>
-  <h3>Bonusy</h3>
+  <h3>Odpal bonus</h3>
+  {% if window.competition %}
+  <p class="muted">
+    Bonusy konkursowe dotyczą najbliższego konkursu:
+    <strong>{{ window.competition.name }}</strong> ({{ window.competition.start_at|date:"d.m.Y H:i" }}).
+    Bonusy weekendowe dotyczą weekendu: <strong>{{ window.weekend.name }}</strong>.
+    Bonus można odpalić dopiero po zakończeniu poprzedniego konkursu (weekendu) i tylko przed startem.
+  </p>
+  {% endif %}
+
+  {% if usable_bonuses %}
+  <form method="post" action="{% url 'bonus_use' %}" id="bonus-form">
+    {% csrf_token %}
+    <label>Bonus
+      <select name="code" id="bonus-code" required>
+        <option value="">-</option>
+        {% for bonus in usable_bonuses %}
+        {% if bonus.code != "pilich" %}<option value="{{ bonus.code }}">{{ bonus.label }} ({{ bonus.scope }}{% if bonus.limit > 1 %}, zostało {{ bonus.remaining }}{% endif %})</option>{% endif %}
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="grp" data-codes="double_captain wind">
+      <label>Twój zawodnik
+        <select name="tj">
+          <option value="">-</option>
+          {% for j in my_jumpers %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }})</option>{% endif %}{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="patriot">
+      <label>Polak
+        <select name="pj">
+          <option value="">-</option>
+          {% for j in poles %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}">{{ j.name }}{% if j.owner %} - {{ j.owner.name }}{% else %} (wolny){% endif %}</option>{% endif %}{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="steal blacklist duel reversed">
+      <label>Gracz
+        <select name="tp" id="bonus-tp">
+          <option value="">-</option>
+          <option value="{{ player.pk }}" data-self="1">{{ player.name }} (ja)</option>
+          {% for p in other_players %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="steal blacklist">
+      <label><span class="lbl" data-codes="steal">Zawodnik, którego bierzesz (z drużyny wskazanego gracza)</span><span class="lbl" data-codes="blacklist">Zawodnik do zamrożenia (z drużyny wskazanego gracza)</span>
+        <select name="sj" id="bonus-sj">
+          <option value="">-</option>
+          {% for j in owned_jumpers %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}" data-owner="{{ j.owner_id }}">{{ j.name }} ({{ j.country }})</option>{% endif %}{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="steal">
+      <label>Zawodnik, którego oddajesz (z Twojej drużyny)
+        <select name="gj">
+          <option value="">-</option>
+          {% for j in my_jumpers %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }})</option>{% endif %}{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="typer">
+      <p class="muted">Wytypuj top 5 w kolejności miejsc 1-5 (tylko mężczyźni): trafiony zawodnik w top 5 = 3 pkt, trafione dokładne miejsce = 8 pkt.</p>
+      {% for n in "12345" %}
+      <label>Miejsce {{ n }}
+        <select name="t{{ n }}"><option value="">-</option>{% for j in pool_men %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }}){% if j.owner %} - {{ j.owner.name }}{% endif %}</option>{% endfor %}</select>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="grp" data-codes="dream_team">
+      <p class="muted">Twój skład na ten konkurs: 5 skoczków i 1 skoczkini (dowolni, także z cudzych drużyn).</p>
+      {% for n in "12345" %}
+      <label>Skoczek {{ n }}
+        <select name="d{{ n }}"><option value="">-</option>{% for j in pool_men %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }}){% if j.owner %} - {{ j.owner.name }}{% endif %}</option>{% endfor %}</select>
+      </label>
+      {% endfor %}
+      <label>Skoczkini
+        <select name="dk"><option value="">-</option>{% for j in pool_women %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }}){% if j.owner %} - {{ j.owner.name }}{% endif %}</option>{% endfor %}</select>
+      </label>
+    </div>
+
+    <button type="submit">Odpal bonus</button>
+  </form>
+  {% else %}
+  <p class="muted">Teraz nie możesz odpalić żadnego bonusu (patrz powody w tabeli poniżej).</p>
+  {% endif %}
+</article>
+
+<article>
+  <h3>Moje odpalone bonusy</h3>
+  {% if my_uses %}
   <div class="scroll">
   <table>
-    <thead><tr><th>Bonus</th><th>Typ</th><th class="points">Użyty</th></tr></thead>
+    <thead><tr><th>Bonus</th><th>Szczegóły</th><th></th></tr></thead>
+    <tbody>
+      {% for row in my_uses %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.description }}</td>
+        <td>
+          {% if not row.locked %}
+          <form method="post" action="{% url 'bonus_cancel' row.use.pk %}" style="margin:0"
+                onsubmit="return confirm('Cofnąć ten bonus?')">
+            {% csrf_token %}<button class="outline secondary" type="submit">Cofnij</button>
+          </form>
+          {% else %}<span class="muted">rozegrany</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Jeszcze nie odpaliłeś żadnego bonusu.</p>{% endif %}
+</article>
+{% endif %}
+
+<article>
+  <h3>Bonusy{% if not is_me %} gracza {{ player.name }}{% endif %}</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Bonus</th><th>Typ</th><th class="points">Użyty</th>{% if is_me %}<th>Teraz</th>{% endif %}</tr></thead>
     <tbody>
       {% for bonus in bonuses %}
-      <tr {% if not bonus.available %}class="muted"{% endif %}>
+      <tr {% if bonus.used >= bonus.limit %}class="muted"{% endif %}>
         <td>{{ bonus.label }}</td>
         <td>{{ bonus.scope }}</td>
         <td class="points">{{ bonus.used }}/{{ bonus.limit }}</td>
+        {% if is_me %}<td class="muted">{% if bonus.available %}można odpalić{% else %}{{ bonus.reason }}{% endif %}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
 </article>
+
+{% if is_me and usable_bonuses %}
+<script>
+  (function () {
+    var code = document.getElementById("bonus-code");
+    var tp = document.getElementById("bonus-tp");
+    var sj = document.getElementById("bonus-sj");
+    var groups = document.querySelectorAll("#bonus-form .grp");
+    var labels = document.querySelectorAll("#bonus-form .lbl");
+    function inList(el, value) {
+      var codes = el.getAttribute("data-codes");
+      return codes ? codes.split(" ").indexOf(value) !== -1 : false;
+    }
+    function update() {
+      var value = code.value;
+      groups.forEach(function (g) { g.hidden = !inList(g, value); });
+      labels.forEach(function (l) { l.hidden = !inList(l, value); });
+      // Kradzież i Kości nie mogą dotyczyć mnie samego.
+      Array.prototype.forEach.call(tp.options, function (o) {
+        if (o.getAttribute("data-self")) o.disabled = (value === "steal" || value === "duel");
+      });
+      if (tp.options[tp.selectedIndex] && tp.options[tp.selectedIndex].disabled) tp.value = "";
+      // Zawodnicy tylko z drużyny wskazanego gracza.
+      Array.prototype.forEach.call(sj.options, function (o) {
+        if (!o.value) return;
+        var off = o.getAttribute("data-owner") !== tp.value;
+        o.disabled = off; o.hidden = off;
+      });
+      if (sj.options[sj.selectedIndex] && sj.options[sj.selectedIndex].disabled) sj.value = "";
+    }
+    code.addEventListener("change", update);
+    tp.addEventListener("change", update);
+    update();
+  })();
+</script>
+{% endif %}
 {% endblock %}

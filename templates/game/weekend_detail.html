@@ -24,6 +24,23 @@
   </div>
 </article>
 
+{% if bonus_rows %}
+<article>
+  <h3>Bonusy w tym weekendzie</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Gracz</th><th>Bonus</th><th>Szczegóły</th></tr></thead>
+    <tbody>
+      {% for row in bonus_rows %}
+      <tr><td>{{ row.use.player.name }}</td><td>{{ row.label }}</td><td>{{ row.description }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">Wybory Typera i Drużyny marzeń są ukryte do startu konkursu.</p>
+</article>
+{% endif %}
+
 <article>
   <h3>Wyniki weekendu</h3>
   {% for player, score in rows %}

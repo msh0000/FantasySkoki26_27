@@ -133,7 +133,7 @@ def score_competition(
                 score.add(f"{_name(jumpers, jid)}: poza top {WIND_TOP} (wiatr)", WIND_PENALTY)
 
     # 3) Typer (tylko konkursy mężczyzn).
-    if comp.gender == rules.MALE:
+    if comp.gender in (rules.MALE, rules.MIXED):  # w mieszanym liczą się miejsca mężczyzn
         for b in by_code.get(TYPER, []):
             score = scores.setdefault(b.player_id, PlayerScore())
             for position, jid in enumerate(b.picks, start=1):

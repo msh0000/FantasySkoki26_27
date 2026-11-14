@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 
 from . import bonuses, rules, services
 from .forms import DraftForm
-from .models import BonusUse, Competition, Jumper, Player, QueueSlot, Weekend
+from .models import BonusUse, Jumper, Player, QueueSlot, Weekend
 
 
 def _current_player(request) -> Player | None:
@@ -32,19 +32,51 @@ def team(request, player_id=None):
     player = get_object_or_404(Player, pk=player_id) if player_id else me
     if player is None:
         return render(request, "game/no_player.html")
+    is_me = me is not None and me.pk == player.pk
     jumpers = player.jumpers.all()
-    return render(
-        request,
-        "game/team.html",
-        {
-            "player": player,
-            "is_me": me is not None and me.pk == player.pk,
-            "men": jumpers.filter(gender="M"),
-            "women": jumpers.filter(gender="K"),
-            "bonuses": services.bonus_overview(player),
-            "players": Player.objects.all(),
-        },
-    )
+    window = services.bonus_window()
+    context = {
+        "player": player,
+        "is_me": is_me,
+        "men": jumpers.filter(gender="M"),
+        "women": jumpers.filter(gender="K"),
+        "bonuses": services.bonus_overview(player, window),
+        "players": Player.objects.all(),
+        "window": window,
+    }
+    if is_me:
+        pool = Jumper.objects.filter(Q(active=True) | Q(owner__isnull=False)).select_related(
+            "owner"
+        )
+        usable = [b for b in context["bonuses"] if b["available"]]
+        my_uses = list(
+            player.bonus_uses.select_related(
+                "competition", "weekend", "target_player", "target_jumper", "give_jumper"
+            ).order_by("-created_at")
+        )
+        context.update(
+            {
+                "usable_bonuses": usable,
+                "my_jumpers": list(jumpers.order_by("gender", "name")),
+                "other_players": [p for p in context["players"] if p.pk != player.pk],
+                "owned_jumpers": list(
+                    pool.filter(owner__isnull=False).order_by("owner__order", "gender", "name")
+                ),
+                "poles": list(pool.filter(country="POL").order_by("gender", "name")),
+                "pool_men": pool.filter(gender="M").order_by("name"),
+                "pool_women": pool.filter(gender="K").order_by("name"),
+                "my_uses": [
+                    {
+                        "use": use,
+                        "label": bonuses.SPECS[use.code].label,
+                        "description": services.describe_bonus(use),
+                        "locked": services.bonus_is_locked(use),
+                    }
+                    for use in my_uses
+                ],
+            }
+        )
+    return render(request, "game/team.html", context)
 
 
 @login_required
@@ -88,6 +120,7 @@ def weekend_detail(request, pk):
             "competitions": competitions,
             "locked": weekend.is_locked(),
             "me": _current_player(request),
+            "bonus_rows": bonus_rows(request, weekend, _current_player(request)),
         },
     )
 
@@ -264,117 +297,95 @@ def transfer_pass(request, weekend_id):
     return redirect("transfers_for", weekend_id=weekend.pk)
 
 
-# --- Bonusy ---------------------------------------------------------------------------------
+# --- Bonusy (odpalane z widoku "Moja drużyna") ---------------------------------------------
 
 
 SECRET_PICK_CODES = {bonuses.TYPER, bonuses.DREAM_TEAM}
 
 
-def _ids(request, *names) -> list[Jumper]:
+def _jumper(request, name):
+    return Jumper.objects.filter(pk=request.POST.get(name) or None).first()
+
+
+def _picks(request, *names) -> list[Jumper]:
     ids = [request.POST.get(name) for name in names if request.POST.get(name)]
     by_id = {str(j.pk): j for j in Jumper.objects.filter(pk__in=ids)}
     return [by_id[i] for i in ids if i in by_id]
 
 
 @login_required
-def bonuses_page(request, weekend_id=None):
-    weekend = (
-        get_object_or_404(Weekend, pk=weekend_id)
-        if weekend_id
-        else services.current_transfer_weekend()
-    )
-    if weekend is None:
-        return render(request, "game/bonuses.html", {"weekend": None})
-    me = _current_player(request)
-    jumpers = Jumper.objects.filter(Q(active=True) | Q(owner__isnull=False)).order_by("name")
-    rows = []
-    for use in weekend.bonus_uses.select_related(
-        "player", "competition", "target_player", "target_jumper", "give_jumper"
-    ).order_by("created_at"):
-        locked = services.bonus_is_locked(use)
-        own = me is not None and use.player_id == me.pk
-        hide = (
-            use.code in SECRET_PICK_CODES and not locked and not own and not request.user.is_staff
-        )
-        rows.append(
-            {
-                "use": use,
-                "label": bonuses.SPECS[use.code].label,
-                "description": services.describe_bonus(use, hide_secret=hide),
-                "locked": locked,
-            }
-        )
-    return render(
-        request,
-        "game/bonuses.html",
-        {
-            "weekend": weekend,
-            "weekends": Weekend.objects.all(),
-            "competitions": weekend.competitions.all(),
-            "players": Player.objects.all(),
-            "me": me,
-            "men": jumpers.filter(gender="M"),
-            "women": jumpers.filter(gender="K"),
-            "specs": [s for s in bonuses.SPECS.values() if s.code != bonuses.PILICH],
-            "rows": rows,
-            "overview": services.bonus_overview(me) if me else [],
-            "weekend_locked": weekend.is_locked(),
-        },
-    )
-
-
-@login_required
 @require_POST
-def bonus_use(request, weekend_id):
-    weekend = get_object_or_404(Weekend, pk=weekend_id)
-    player = get_object_or_404(Player, pk=request.POST.get("player"))
+def bonus_use(request):
+    me = _current_player(request)
+    if me is None:
+        messages.error(request, "To konto nie jest jeszcze graczem.")
+        return redirect("team")
     code = request.POST.get("code")
     if code not in bonuses.SPECS:
         messages.error(request, "Wybierz bonus.")
-        return redirect("bonuses_for", weekend_id=weekend.pk)
-    competition = Competition.objects.filter(pk=request.POST.get("competition") or None).first()
-    target_player = Player.objects.filter(pk=request.POST.get("tp") or None).first()
-    if code == bonuses.STEAL:
-        target_jumper = Jumper.objects.filter(pk=request.POST.get("sj") or None).first()
+        return redirect("team")
+    if code == bonuses.STEAL or code == bonuses.BLACKLIST:
+        target_jumper = _jumper(request, "sj")
+    elif code == bonuses.PATRIOT:
+        target_jumper = _jumper(request, "pj")
     else:
-        target_jumper = Jumper.objects.filter(pk=request.POST.get("tj") or None).first()
-    give_jumper = Jumper.objects.filter(pk=request.POST.get("gj") or None).first()
+        target_jumper = _jumper(request, "tj")
     if code == bonuses.TYPER:
-        picks = _ids(request, "t1", "t2", "t3", "t4", "t5")
+        picks = _picks(request, "t1", "t2", "t3", "t4", "t5")
     elif code == bonuses.DREAM_TEAM:
-        picks = _ids(request, "d1", "d2", "d3", "d4", "d5", "dk")
+        picks = _picks(request, "d1", "d2", "d3", "d4", "d5", "dk")
     else:
         picks = []
     try:
         use = services.use_bonus(
-            player=player,
+            player=me,
             code=code,
-            weekend=weekend,
-            competition=competition,
-            target_player=target_player,
+            target_player=Player.objects.filter(pk=request.POST.get("tp") or None).first(),
             target_jumper=target_jumper,
-            give_jumper=give_jumper,
+            give_jumper=_jumper(request, "gj"),
             picks=picks,
             made_by=request.user,
-            override=request.user.is_staff and request.POST.get("override") == "1",
         )
     except services.BonusError as error:
         for message in error.errors:
             messages.error(request, message)
     else:
-        messages.success(request, f"{player.name} odpala: {bonuses.SPECS[use.code].label}.")
-    return redirect("bonuses_for", weekend_id=weekend.pk)
+        target = use.competition.name if use.competition else use.weekend.name
+        messages.success(request, f"Odpalono: {bonuses.SPECS[use.code].label} ({target}).")
+    return redirect("team")
 
 
 @login_required
 @require_POST
 def bonus_cancel(request, use_id):
+    me = _current_player(request)
     use = get_object_or_404(BonusUse, pk=use_id)
-    weekend_id = use.weekend_id
+    if me is None or use.player_id != me.pk:
+        raise PermissionDenied
     try:
-        services.cancel_bonus(use, override=request.user.is_staff)
+        services.cancel_bonus(use)
     except services.BonusError as error:
         messages.error(request, error.errors[0])
     else:
         messages.success(request, "Bonus cofnięty.")
-    return redirect("bonuses_for", weekend_id=weekend_id)
+    return redirect("team")
+
+
+def bonus_rows(request, weekend: Weekend, me: Player | None) -> list[dict]:
+    """Użyte bonusy weekendu. Wybory typera i drużyny marzeń są ukryte do startu konkursu."""
+    rows = []
+    uses = weekend.bonus_uses.select_related(
+        "player", "competition", "target_player", "target_jumper", "give_jumper"
+    ).order_by("created_at")
+    for use in uses:
+        locked = services.bonus_is_locked(use)
+        own = me is not None and use.player_id == me.pk
+        hide = use.code in SECRET_PICK_CODES and not locked and not own
+        rows.append(
+            {
+                "use": use,
+                "label": bonuses.SPECS[use.code].label,
+                "description": services.describe_bonus(use, hide_secret=hide),
+            }
+        )
+    return rows

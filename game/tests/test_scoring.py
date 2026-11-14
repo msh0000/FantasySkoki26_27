@@ -154,3 +154,11 @@ def test_no_winner_bonus_when_nobody_scored_anything():
     # Konkurs z wynikami, ale nikt nie ma jeszcze drużyny (np. przed draftem).
     result = score_weekend(competitions=[comp({1: [], 2: []})], jumpers=JUMPERS, players=[1, 2])
     assert totals(result) == {1: 0, 2: 0}
+
+
+def test_typer_works_in_mixed_competition_for_men():
+    from game.rules import MIXED
+
+    typer = bonus(b.TYPER, picks=(1, 2, 3, 4, 5))
+    result = score_competition(comp({1: []}, typer, gender=MIXED), JUMPERS)
+    assert result[1].total == 8 + 8 + 8  # trafione miejsca 1, 2, 3 (4. poza top 5)

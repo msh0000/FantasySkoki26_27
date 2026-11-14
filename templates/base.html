@@ -37,7 +37,6 @@
         <li><a href="{% url 'team' %}">Moja drużyna</a></li>
         <li><a href="{% url 'weekends' %}">Weekendy</a></li>
         <li><a href="{% url 'transfers' %}">Transfery</a></li>
-        <li><a href="{% url 'bonuses' %}">Bonusy</a></li>
         {% if user.is_staff %}
         <li><a href="{% url 'draft' %}">Draft</a></li>
         <li><a href="{% url 'admin:index' %}">Admin</a></li>

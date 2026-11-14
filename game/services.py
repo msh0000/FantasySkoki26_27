@@ -1,6 +1,7 @@
 """Warstwa łącząca bazę danych (modele) z czystą logiką z rules.py i scoring.py."""
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -243,24 +244,93 @@ def assign_rosters(selection: dict[Player, list[Jumper]]) -> None:
         Jumper.objects.filter(id__in=[j.id for j in jumpers]).update(owner=player)
 
 
-# --- Przegląd bonusów gracza -------------------------------------------------------------------
+# --- Okno bonusowe i przegląd bonusów gracza --------------------------------------------------
 
 
-def bonus_overview(player: Player) -> list[dict]:
-    """Dla każdego z 11 bonusów: ile razy użyty, limit i opis zasięgu."""
+@dataclass
+class BonusWindow:
+    """Dla którego konkursu i weekendu można teraz odpalać bonusy.
+
+    Zawsze jest to najbliższy konkurs, który się jeszcze nie rozpoczął, a bonusy odblokowują się
+    dopiero, gdy poprzedni konkurs (weekend) się zakończył, czyli ma wczytane wyniki.
+    Błąd (niepusty tekst) oznacza, że dany rodzaj bonusów jest teraz zablokowany.
+    """
+
+    competition: Competition | None = None
+    weekend: Weekend | None = None
+    competition_error: str = ""
+    weekend_error: str = ""
+
+
+def bonus_window(now=None) -> BonusWindow:
+    now = now or timezone.now()
+    competitions = list(
+        Competition.objects.filter(counts=True).select_related("weekend").order_by("start_at", "id")
+    )
+    nearest = next((c for c in competitions if c.start_at > now), None)
+    if nearest is None:
+        message = "Brak nadchodzących konkursów."
+        return BonusWindow(competition_error=message, weekend_error=message)
+
+    finished = set(
+        Result.objects.filter(competition__in=competitions)
+        .values_list("competition_id", flat=True)
+        .distinct()
+    )
+    position = competitions.index(nearest)
+    previous = competitions[position - 1] if position else None
+
+    competition_error = ""
+    if previous is not None and previous.pk not in finished:
+        competition_error = (
+            f"Poprzedni konkurs ({previous.name}) jeszcze się nie zakończył - "
+            "bonusy odblokują się po wczytaniu jego wyników."
+        )
+
+    weekend = nearest.weekend
+    weekend_error = ""
+    if weekend.is_locked(now):
+        weekend_error = "Weekend już się rozpoczął - bonusy weekendowe są zablokowane."
+    else:
+        unfinished = [c for c in competitions[:position] if c.pk not in finished]
+        if unfinished:
+            weekend_error = (
+                f"Poprzedni weekend jeszcze się nie zakończył ({unfinished[0].name}) - "
+                "bonusy odblokują się po wczytaniu wyników."
+            )
+    return BonusWindow(nearest, weekend, competition_error, weekend_error)
+
+
+def bonus_overview(player: Player, window: BonusWindow | None = None) -> list[dict]:
+    """Dla każdego z 11 bonusów: ile razy użyty, limit i czy można go teraz odpalić."""
+    window = window or bonus_window()
     used: dict[str, int] = {}
     for code in player.bonus_uses.values_list("code", flat=True):
         used[code] = used.get(code, 0) + 1
-    return [
-        {
-            "label": spec.label,
-            "scope": "weekend" if spec.scope is Scope.WEEKEND else "konkurs",
-            "used": used.get(spec.code, 0),
-            "limit": spec.season_limit,
-            "available": used.get(spec.code, 0) < spec.season_limit,
-        }
-        for spec in SPECS.values()
-    ]
+    overview = []
+    for spec in SPECS.values():
+        count = used.get(spec.code, 0)
+        if count >= spec.season_limit:
+            reason = "wykorzystany"
+        elif spec.code == bonuses.PILICH:
+            reason = "wkrótce"
+        elif spec.scope is Scope.WEEKEND:
+            reason = window.weekend_error
+        else:
+            reason = window.competition_error
+        overview.append(
+            {
+                "code": spec.code,
+                "label": spec.label,
+                "scope": "weekend" if spec.scope is Scope.WEEKEND else "konkurs",
+                "used": count,
+                "limit": spec.season_limit,
+                "remaining": spec.season_limit - count,
+                "available": not reason,
+                "reason": reason,
+            }
+        )
+    return overview
 
 
 # --- Okno transferowe (pomocnicze dla ekranów) ---------------------------------------------------
@@ -300,17 +370,14 @@ def use_bonus(
     *,
     player: Player,
     code: str,
-    weekend: Weekend,
-    competition: Competition | None = None,
     target_player: Player | None = None,
     target_jumper: Jumper | None = None,
     give_jumper: Jumper | None = None,
     picks: list[Jumper] | None = None,
     made_by=None,
-    override: bool = False,
     now=None,
 ) -> BonusUse:
-    """Odpala bonus po sprawdzeniu zasad. Błąd: BonusError z listą komunikatów."""
+    """Odpala bonus gracza na najbliższy konkurs/weekend. Błąd: BonusError z listą komunikatów."""
     spec = SPECS[code]
     picks = picks or []
     errors: list[str] = []
@@ -318,23 +385,28 @@ def use_bonus(
     if code == bonuses.PILICH:
         raise BonusError(["Bonus „Tomasz Pilich” nie jest jeszcze dostępny w aplikacji."])
 
+    window = bonus_window(now)
     if spec.scope is Scope.COMPETITION:
-        if competition is None:
-            raise BonusError(["Wskaż konkurs."])
-        if competition.weekend_id != weekend.pk:
-            raise BonusError(["Ten konkurs nie należy do wybranego weekendu."])
-        locked = competition.is_locked(now)
+        competition, weekend = (
+            window.competition,
+            (window.competition.weekend if window.competition else None),
+        )
+        problem = window.competition_error
     else:
-        competition = None
-        locked = weekend.is_locked(now)
-    if locked and not override:
-        errors.append("Za późno: konkurs lub weekend już się rozpoczął, bonusy są zablokowane.")
+        competition, weekend = None, window.weekend
+        problem = window.weekend_error
+    if problem:
+        raise BonusError([problem])
 
     if code in bonuses.JUMPER_TARGETING:
         if target_jumper is None:
             errors.append("Wskaż zawodnika.")
         elif competition and not _gender_fits(competition, target_jumper):
             errors.append("Ten zawodnik nie startuje w tym konkursie (zła płeć).")
+        elif code in (bonuses.DOUBLE_CAPTAIN, bonuses.WIND) and target_jumper.owner_id != player.pk:
+            errors.append("Ten bonus możesz użyć tylko na zawodniku ze swojego składu.")
+        elif code == bonuses.BLACKLIST and target_jumper.owner_id is None:
+            errors.append("Czarna Lista działa na zawodnika, który jest w czyjejś drużynie.")
         elif code == bonuses.PATRIOT and target_jumper.country != "POL":
             errors.append("Patriota działa tylko na Polaka.")
 
@@ -349,14 +421,14 @@ def use_bonus(
             errors.append("Ci zawodnicy nie startują w tym konkursie (zła płeć).")
 
     if code == bonuses.TYPER:
-        if competition and competition.gender != rules.MALE:
-            errors.append("Typer działa tylko w konkursach mężczyzn.")
+        if competition and competition.gender == rules.FEMALE:
+            errors.append("Typer działa tylko w konkursach mężczyzn (także mieszanych).")
         if any(j.gender != rules.MALE for j in picks):
             errors.append("W typerze wybierasz tylko mężczyzn.")
 
     if code == bonuses.DREAM_TEAM:
         men = sum(1 for j in picks if j.gender == rules.MALE)
-        if len(picks) == 6 and (men != 5):
+        if len(picks) == 6 and men != 5:
             errors.append("Drużyna marzeń: dokładnie 5 skoczków i 1 skoczkini.")
 
     use = BonusUse(
@@ -364,9 +436,9 @@ def use_bonus(
         code=code,
         weekend=weekend,
         competition=competition,
-        target_player=target_player
-        if code in bonuses.PLAYER_TARGETING or code == bonuses.STEAL
-        else None,
+        target_player=(
+            target_player if code in bonuses.PLAYER_TARGETING or code == bonuses.STEAL else None
+        ),
         target_jumper=target_jumper,
         give_jumper=give_jumper if code == bonuses.STEAL else None,
         picks=[j.pk for j in picks] if code in (bonuses.TYPER, bonuses.DREAM_TEAM) else [],

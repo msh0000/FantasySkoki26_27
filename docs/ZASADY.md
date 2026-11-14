@@ -79,3 +79,15 @@ Zaimplementowane w `game/scoring.py` i `game/bonuses.py`, łatwe do zmiany:
 7. Mistrzostwa świata punktowane jak Puchar Świata.
 8. Transfer w tej samej płci (M za M, K za K).
 9. Patriota: dodatkowy Polak (kod kraju POL) wraca do składu na ten konkurs albo x2, gdy już w nim jest.
+
+## Odpalanie bonusów w aplikacji (ustalenia z trzeciej rundy)
+- Bonusy odpala się w **Moja drużyna**, tylko własne (nie za innych graczy).
+- Bonus konkursowy zawsze dotyczy **najbliższego konkursu**, który się jeszcze nie rozpoczął, a weekendowy
+  najbliższego weekendu (tylko przed startem jego pierwszego konkursu). Nie ma wyboru innego terminu.
+- Bonus można odpalić dopiero, gdy **poprzedni konkurs (weekend) się zakończył**, czyli ma wczytane wyniki.
+  Konkurs odwołany trzeba w adminie oznaczyć jako niepoliczalny ("liczy się do gry" = nie), inaczej blokuje bonusy.
+- Wybór zawodników jest zawężony: Podwójny kapitan i Wiatr pod narty tylko z mojego składu, Czarna Lista
+  z drużyny wskazanego gracza (także mojej), Kradzież: mój zawodnik do oddania i zawodnik wskazanego gracza,
+  Patriota tylko Polacy, Typer i Drużyna marzeń z całej puli (Typer: tylko mężczyźni, także w konkursach mieszanych).
+- Wybory Typera i Drużyny marzeń są ukryte przed innymi do startu konkursu.
+- Do cofnięcia użycia wystarczy czas przed startem konkursu (weekendu).
