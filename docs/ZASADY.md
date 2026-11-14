@@ -51,3 +51,31 @@ Typ "Konkurs" = raz na konkurs, "Weekend" = raz na weekend. Użycie przed rozpoc
 
 ## Dane o wynikach
 Wyniki mają być pobierane automatycznie (scraping lub API), nie ręcznie.
+
+## Ustalenia z drugiej rundy
+- Każdy bonus raz na sezon (Typer: 3 razy, tylko konkursy mężczyzn, punkty wliczają się do weekendu).
+- Gracz może mieć odpalony tylko 1 bonus na weekend (bonusy weekendowe) i 1 na konkurs (konkursowe).
+- Zawodnik może być objęty tylko jednym bonusem w konkursie (kapitan, wiatr, czarna lista, patriota).
+- Czarną Listę można użyć też na siebie, Podwójnego kapitana na zawodnika z cudzej drużyny.
+- Miejsca poza top 30 = 0 pkt. Połówki punktów zostają (bez zaokrąglania).
+- Norweg: nie można go użyć, jeśli ktoś już użył bonusu na tym graczu.
+- Drużyna marzeń: 5 M + 1 K, bez ograniczeń unikalności, nadpisuje skład tylko na ten konkurs.
+- Tomasz Pilich: do użycia przed oknem transferowym, przenosi gracza na początek kolejki
+  (kolejne użycia = kolejne miejsca). **Pominięte w szkicu, robimy na końcu.**
+- Remis w rankingu kolejki: wyżej w bazie (mniejsza "pozycja w bazie") = wyżej w rankingu.
+- Ranking do kolejki: punkty z całego sezonu, liczone po zakończeniu poprzedniego weekendu.
+- Źródło wyników: skijumping.pl (scraping).
+
+## Założenia szkicu - DO POTWIERDZENIA
+Zaimplementowane w `game/scoring.py` i `game/bonuses.py`, łatwe do zmiany:
+1. Bonusy na zawodnika (kapitan, wiatr, czarna lista) działają na zawodnika, czyli zmieniają punkty
+   tego, kto ma go w składzie w danym konkursie (także gdy użył ich ktoś inny).
+2. Wiatr pod narty: x1.5 punktów, a poza top 5 dodatkowo -10 (kara obok punktów x1.5).
+3. Typer: trafiony zawodnik z top 5 = 3 pkt, trafiony na dokładnym miejscu = 8 pkt (nie 3+8).
+4. Popsute przeliczniki: miejsce r = r punktów (M do 30. miejsca, K do 10.).
+5. Norweg chroni przed Kradzieżą, Kośćmi i Popsutymi przelicznikami, ale nie przed Czarną Listą.
+6. Kolejność weekendu: konkursy + kary za transfery + korekty, potem pojedynek (+-20),
+   na końcu premia 10 pkt dla najlepszej drużyny (liczona razem z pojedynkiem).
+7. Mistrzostwa świata punktowane jak Puchar Świata.
+8. Transfer w tej samej płci (M za M, K za K).
+9. Patriota: dodatkowy Polak (kod kraju POL) wraca do składu na ten konkurs albo x2, gdy już w nim jest.
