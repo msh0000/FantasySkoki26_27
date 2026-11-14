@@ -324,12 +324,12 @@ def bonus_use(request):
     if code not in bonuses.SPECS:
         messages.error(request, "Wybierz bonus.")
         return redirect("team")
-    if code == bonuses.STEAL or code == bonuses.BLACKLIST:
-        target_jumper = _jumper(request, "sj")
+    if code in (bonuses.STEAL, bonuses.BLACKLIST, bonuses.DOUBLE_CAPTAIN, bonuses.WIND):
+        target_jumper = _jumper(request, "sj")  # zawodnik z drużyny wskazanego gracza
     elif code == bonuses.PATRIOT:
         target_jumper = _jumper(request, "pj")
     else:
-        target_jumper = _jumper(request, "tj")
+        target_jumper = None
     if code == bonuses.TYPER:
         picks = _picks(request, "t1", "t2", "t3", "t4", "t5")
     elif code == bonuses.DREAM_TEAM:

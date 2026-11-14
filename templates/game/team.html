@@ -48,15 +48,6 @@
       </select>
     </label>
 
-    <div class="grp" data-codes="double_captain wind">
-      <label>Twój zawodnik
-        <select name="tj">
-          <option value="">-</option>
-          {% for j in my_jumpers %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}">{{ j.name }} ({{ j.country }})</option>{% endif %}{% endfor %}
-        </select>
-      </label>
-    </div>
-
     <div class="grp" data-codes="patriot">
       <label>Polak
         <select name="pj">
@@ -66,7 +57,7 @@
       </label>
     </div>
 
-    <div class="grp" data-codes="steal blacklist duel reversed">
+    <div class="grp" data-codes="steal blacklist double_captain wind duel reversed">
       <label>Gracz
         <select name="tp" id="bonus-tp">
           <option value="">-</option>
@@ -76,8 +67,8 @@
       </label>
     </div>
 
-    <div class="grp" data-codes="steal blacklist">
-      <label><span class="lbl" data-codes="steal">Zawodnik, którego bierzesz (z drużyny wskazanego gracza)</span><span class="lbl" data-codes="blacklist">Zawodnik do zamrożenia (z drużyny wskazanego gracza)</span>
+    <div class="grp" data-codes="steal blacklist double_captain wind">
+      <label><span class="lbl" data-codes="steal">Zawodnik, którego bierzesz (z drużyny wskazanego gracza)</span><span class="lbl" data-codes="blacklist double_captain wind">Zawodnik (z drużyny wskazanego gracza)</span>
         <select name="sj" id="bonus-sj">
           <option value="">-</option>
           {% for j in owned_jumpers %}{% if window.competition.gender == "X" or j.gender == window.competition.gender %}<option value="{{ j.pk }}" data-owner="{{ j.owner_id }}">{{ j.name }} ({{ j.country }})</option>{% endif %}{% endfor %}

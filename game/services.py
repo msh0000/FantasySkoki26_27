@@ -403,10 +403,11 @@ def use_bonus(
             errors.append("Wskaż zawodnika.")
         elif competition and not _gender_fits(competition, target_jumper):
             errors.append("Ten zawodnik nie startuje w tym konkursie (zła płeć).")
-        elif code in (bonuses.DOUBLE_CAPTAIN, bonuses.WIND) and target_jumper.owner_id != player.pk:
-            errors.append("Ten bonus możesz użyć tylko na zawodniku ze swojego składu.")
-        elif code == bonuses.BLACKLIST and target_jumper.owner_id is None:
-            errors.append("Czarna Lista działa na zawodnika, który jest w czyjejś drużynie.")
+        elif (
+            code in (bonuses.DOUBLE_CAPTAIN, bonuses.WIND, bonuses.BLACKLIST)
+            and target_jumper.owner_id is None
+        ):
+            errors.append("Ten bonus działa na zawodnika, który jest w czyjejś drużynie.")
         elif code == bonuses.PATRIOT and target_jumper.country != "POL":
             errors.append("Patriota działa tylko na Polaka.")
 

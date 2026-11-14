@@ -86,8 +86,9 @@ Zaimplementowane w `game/scoring.py` i `game/bonuses.py`, łatwe do zmiany:
   najbliższego weekendu (tylko przed startem jego pierwszego konkursu). Nie ma wyboru innego terminu.
 - Bonus można odpalić dopiero, gdy **poprzedni konkurs (weekend) się zakończył**, czyli ma wczytane wyniki.
   Konkurs odwołany trzeba w adminie oznaczyć jako niepoliczalny ("liczy się do gry" = nie), inaczej blokuje bonusy.
-- Wybór zawodników jest zawężony: Podwójny kapitan i Wiatr pod narty tylko z mojego składu, Czarna Lista
-  z drużyny wskazanego gracza (także mojej), Kradzież: mój zawodnik do oddania i zawodnik wskazanego gracza,
-  Patriota tylko Polacy, Typer i Drużyna marzeń z całej puli (Typer: tylko mężczyźni, także w konkursach mieszanych).
+- Bonusy działające na zawodnika (Podwójny kapitan, Wiatr pod narty, Czarna Lista, Kradzież) można użyć na
+  **dowolnego** zawodnika z czyjejś drużyny. Dla wygody wybierasz najpierw gracza (także siebie), a lista
+  zawodników zawęża się do jego drużyny (Kradzież: dodatkowo mój zawodnik do oddania). Patriota: tylko Polacy.
+  Typer i Drużyna marzeń: cała pula (Typer: tylko mężczyźni, także w konkursach mieszanych).
 - Wybory Typera i Drużyny marzeń są ukryte przed innymi do startu konkursu.
 - Do cofnięcia użycia wystarczy czas przed startem konkursu (weekendu).

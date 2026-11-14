@@ -143,10 +143,12 @@ def test_bonus_is_always_for_the_nearest_competition(world):
 
 
 @pytest.mark.django_db
-def test_double_captain_and_wind_only_on_own_jumpers(world):
-    use(world, 0, b.DOUBLE_CAPTAIN, target_jumper=world["men"][0])
-    err = errors_of(world, 1, b.WIND, target_jumper=world["men"][0])  # cudzy zawodnik
-    assert "tylko na zawodniku ze swojego składu" in err[0]
+def test_double_captain_and_wind_work_on_any_jumper_in_a_team(world):
+    use(world, 0, b.DOUBLE_CAPTAIN, target_jumper=world["men"][0])  # własny
+    use(world, 1, b.WIND, target_jumper=world["men"][1])  # zawodnik z cudzej drużyny (G1)
+    free = world["men"][10]  # wolny - nie jest w żadnej drużynie
+    err = errors_of(world, 2, b.WIND, target_jumper=free)
+    assert "jest w czyjejś drużynie" in err[0]
 
 
 @pytest.mark.django_db
@@ -359,16 +361,15 @@ def test_form_shows_nearest_competition_and_has_no_competition_picker(client, wo
 def test_form_lists_only_relevant_jumpers(client, world):
     login(client, world["users"][0])  # G1: M1(POL), M2
     html = client.get(reverse("team")).content.decode()
-    own = html.split('name="tj"')[1].split("</select>")[0]
-    assert "M1" in own and "M2" in own
-    assert "M3" not in own  # cudzy zawodnik
-    assert "K1" not in own  # zła płeć dla konkursu mężczyzn
+    assert 'name="tj"' not in html  # nie ma już listy tylko własnych zawodników
+    picker = html.split('name="sj"')[1].split("</select>")[0]
+    assert 'data-owner="' in picker  # lista zawodników filtrowana wg wybranego gracza
+    assert "M1" in picker and "M3" in picker  # zawodnicy z różnych drużyn (G1 i G2)
+    assert "K1" not in picker  # zła płeć dla konkursu mężczyzn
+    assert "M11" not in picker  # wolny zawodnik nie jest w żadnej drużynie
     poles = html.split('name="pj"')[1].split("</select>")[0]
     assert "M1" in poles and "M6" in poles
     assert "M2" not in poles  # nie-Polak
-    steal_take = html.split('name="sj"')[1].split("</select>")[0]
-    assert 'data-owner="' in steal_take
-    assert "M11" not in steal_take  # wolny zawodnik nie jest w żadnej drużynie
     give = html.split('name="gj"')[1].split("</select>")[0]
     assert "M1" in give and "M3" not in give
 
@@ -376,7 +377,9 @@ def test_form_lists_only_relevant_jumpers(client, world):
 @pytest.mark.django_db
 def test_use_bonus_via_view_as_myself(client, world):
     login(client, world["users"][0])
-    html = post_use(client, b.DOUBLE_CAPTAIN, tj=world["men"][0].pk).content.decode()
+    html = post_use(
+        client, b.DOUBLE_CAPTAIN, tp=world["players"][0].pk, sj=world["men"][0].pk
+    ).content.decode()
     assert "Odpalono: Podwójny kapitan (M1)." in html
     use_row = BonusUse.objects.get()
     assert use_row.player == world["players"][0]
@@ -423,7 +426,7 @@ def test_blocked_bonus_shows_reason_in_view(client, world):
     html = client.get(reverse("team")).content.decode()
     assert "jeszcze się nie zakończył" in html
     assert "Teraz nie możesz odpalić żadnego bonusu" in html or 'id="bonus-form"' in html
-    response = post_use(client, b.WIND, tj=world["men"][0].pk)
+    response = post_use(client, b.WIND, tp=world["players"][0].pk, sj=world["men"][0].pk)
     assert "jeszcze się nie zakończył" in response.content.decode()
     assert BonusUse.objects.count() == 0
 
@@ -465,3 +468,12 @@ def test_typer_picks_hidden_from_others_on_weekend_page_until_start(client, worl
     world["men_comp"].start_at = timezone.now() - timedelta(minutes=5)
     world["men_comp"].save()
     assert "M6, M7" in client.get(page).content.decode()
+
+
+@pytest.mark.django_db
+def test_double_captain_on_other_players_jumper_via_view(client, world):
+    login(client, world["users"][0])
+    post_use(client, b.DOUBLE_CAPTAIN, tp=world["players"][1].pk, sj=world["men"][2].pk)
+    created = BonusUse.objects.get()
+    assert created.player == world["players"][0]
+    assert created.target_jumper == world["men"][2]  # zawodnik Bartka (G2)
