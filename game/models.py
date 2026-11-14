@@ -163,6 +163,9 @@ class BonusUse(models.Model):
         blank=True,
         help_text="Typer: 5 id, Drużyna marzeń: 6 id.",
     )
+    made_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

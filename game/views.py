@@ -1,14 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from . import rules, services
+from . import bonuses, rules, services
 from .forms import DraftForm
-from .models import Jumper, Player, QueueSlot, Weekend
+from .models import BonusUse, Competition, Jumper, Player, QueueSlot, Weekend
 
 
 def _current_player(request) -> Player | None:
@@ -262,3 +262,119 @@ def transfer_pass(request, weekend_id):
         services.finish_turn(weekend, player)
         messages.success(request, f"{player.name} kończy swoją kolejkę.")
     return redirect("transfers_for", weekend_id=weekend.pk)
+
+
+# --- Bonusy ---------------------------------------------------------------------------------
+
+
+SECRET_PICK_CODES = {bonuses.TYPER, bonuses.DREAM_TEAM}
+
+
+def _ids(request, *names) -> list[Jumper]:
+    ids = [request.POST.get(name) for name in names if request.POST.get(name)]
+    by_id = {str(j.pk): j for j in Jumper.objects.filter(pk__in=ids)}
+    return [by_id[i] for i in ids if i in by_id]
+
+
+@login_required
+def bonuses_page(request, weekend_id=None):
+    weekend = (
+        get_object_or_404(Weekend, pk=weekend_id)
+        if weekend_id
+        else services.current_transfer_weekend()
+    )
+    if weekend is None:
+        return render(request, "game/bonuses.html", {"weekend": None})
+    me = _current_player(request)
+    jumpers = Jumper.objects.filter(Q(active=True) | Q(owner__isnull=False)).order_by("name")
+    rows = []
+    for use in weekend.bonus_uses.select_related(
+        "player", "competition", "target_player", "target_jumper", "give_jumper"
+    ).order_by("created_at"):
+        locked = services.bonus_is_locked(use)
+        own = me is not None and use.player_id == me.pk
+        hide = (
+            use.code in SECRET_PICK_CODES and not locked and not own and not request.user.is_staff
+        )
+        rows.append(
+            {
+                "use": use,
+                "label": bonuses.SPECS[use.code].label,
+                "description": services.describe_bonus(use, hide_secret=hide),
+                "locked": locked,
+            }
+        )
+    return render(
+        request,
+        "game/bonuses.html",
+        {
+            "weekend": weekend,
+            "weekends": Weekend.objects.all(),
+            "competitions": weekend.competitions.all(),
+            "players": Player.objects.all(),
+            "me": me,
+            "men": jumpers.filter(gender="M"),
+            "women": jumpers.filter(gender="K"),
+            "specs": [s for s in bonuses.SPECS.values() if s.code != bonuses.PILICH],
+            "rows": rows,
+            "overview": services.bonus_overview(me) if me else [],
+            "weekend_locked": weekend.is_locked(),
+        },
+    )
+
+
+@login_required
+@require_POST
+def bonus_use(request, weekend_id):
+    weekend = get_object_or_404(Weekend, pk=weekend_id)
+    player = get_object_or_404(Player, pk=request.POST.get("player"))
+    code = request.POST.get("code")
+    if code not in bonuses.SPECS:
+        messages.error(request, "Wybierz bonus.")
+        return redirect("bonuses_for", weekend_id=weekend.pk)
+    competition = Competition.objects.filter(pk=request.POST.get("competition") or None).first()
+    target_player = Player.objects.filter(pk=request.POST.get("tp") or None).first()
+    if code == bonuses.STEAL:
+        target_jumper = Jumper.objects.filter(pk=request.POST.get("sj") or None).first()
+    else:
+        target_jumper = Jumper.objects.filter(pk=request.POST.get("tj") or None).first()
+    give_jumper = Jumper.objects.filter(pk=request.POST.get("gj") or None).first()
+    if code == bonuses.TYPER:
+        picks = _ids(request, "t1", "t2", "t3", "t4", "t5")
+    elif code == bonuses.DREAM_TEAM:
+        picks = _ids(request, "d1", "d2", "d3", "d4", "d5", "dk")
+    else:
+        picks = []
+    try:
+        use = services.use_bonus(
+            player=player,
+            code=code,
+            weekend=weekend,
+            competition=competition,
+            target_player=target_player,
+            target_jumper=target_jumper,
+            give_jumper=give_jumper,
+            picks=picks,
+            made_by=request.user,
+            override=request.user.is_staff and request.POST.get("override") == "1",
+        )
+    except services.BonusError as error:
+        for message in error.errors:
+            messages.error(request, message)
+    else:
+        messages.success(request, f"{player.name} odpala: {bonuses.SPECS[use.code].label}.")
+    return redirect("bonuses_for", weekend_id=weekend.pk)
+
+
+@login_required
+@require_POST
+def bonus_cancel(request, use_id):
+    use = get_object_or_404(BonusUse, pk=use_id)
+    weekend_id = use.weekend_id
+    try:
+        services.cancel_bonus(use, override=request.user.is_staff)
+    except services.BonusError as error:
+        messages.error(request, error.errors[0])
+    else:
+        messages.success(request, "Bonus cofnięty.")
+    return redirect("bonuses_for", weekend_id=weekend_id)

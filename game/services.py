@@ -2,14 +2,16 @@
 
 from collections import defaultdict
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
 
-from . import rules, scoring
+from . import bonuses, rules, scoring
 from .bonuses import SPECS, Scope
 from .models import (
     Adjustment,
+    BonusUse,
     Competition,
     Jumper,
     Player,
@@ -279,3 +281,142 @@ def transfers_made(weekend: Weekend) -> dict[int, int]:
         row["player"]: row["n"]
         for row in weekend.transfers.values("player").annotate(n=Count("id"))
     }
+
+
+# --- Bonusy ---------------------------------------------------------------------------------
+
+
+class BonusError(Exception):
+    def __init__(self, errors: list[str]):
+        super().__init__("; ".join(errors))
+        self.errors = errors
+
+
+def _gender_fits(competition: Competition, jumper: Jumper) -> bool:
+    return competition.gender == rules.MIXED or competition.gender == jumper.gender
+
+
+def use_bonus(
+    *,
+    player: Player,
+    code: str,
+    weekend: Weekend,
+    competition: Competition | None = None,
+    target_player: Player | None = None,
+    target_jumper: Jumper | None = None,
+    give_jumper: Jumper | None = None,
+    picks: list[Jumper] | None = None,
+    made_by=None,
+    override: bool = False,
+    now=None,
+) -> BonusUse:
+    """Odpala bonus po sprawdzeniu zasad. Błąd: BonusError z listą komunikatów."""
+    spec = SPECS[code]
+    picks = picks or []
+    errors: list[str] = []
+
+    if code == bonuses.PILICH:
+        raise BonusError(["Bonus „Tomasz Pilich” nie jest jeszcze dostępny w aplikacji."])
+
+    if spec.scope is Scope.COMPETITION:
+        if competition is None:
+            raise BonusError(["Wskaż konkurs."])
+        if competition.weekend_id != weekend.pk:
+            raise BonusError(["Ten konkurs nie należy do wybranego weekendu."])
+        locked = competition.is_locked(now)
+    else:
+        competition = None
+        locked = weekend.is_locked(now)
+    if locked and not override:
+        errors.append("Za późno: konkurs lub weekend już się rozpoczął, bonusy są zablokowane.")
+
+    if code in bonuses.JUMPER_TARGETING:
+        if target_jumper is None:
+            errors.append("Wskaż zawodnika.")
+        elif competition and not _gender_fits(competition, target_jumper):
+            errors.append("Ten zawodnik nie startuje w tym konkursie (zła płeć).")
+        elif code == bonuses.PATRIOT and target_jumper.country != "POL":
+            errors.append("Patriota działa tylko na Polaka.")
+
+    if code == bonuses.STEAL and target_jumper and give_jumper:
+        if target_player is None or target_jumper.owner_id != target_player.pk:
+            errors.append("Zawodnik, którego bierzesz, musi należeć do wskazanego gracza.")
+        if give_jumper.owner_id != player.pk:
+            errors.append("Zawodnik, którego oddajesz, musi należeć do Ciebie.")
+        if give_jumper.gender != target_jumper.gender:
+            errors.append("Wymiana tylko zawodnika za zawodnika tej samej płci.")
+        if competition and not _gender_fits(competition, target_jumper):
+            errors.append("Ci zawodnicy nie startują w tym konkursie (zła płeć).")
+
+    if code == bonuses.TYPER:
+        if competition and competition.gender != rules.MALE:
+            errors.append("Typer działa tylko w konkursach mężczyzn.")
+        if any(j.gender != rules.MALE for j in picks):
+            errors.append("W typerze wybierasz tylko mężczyzn.")
+
+    if code == bonuses.DREAM_TEAM:
+        men = sum(1 for j in picks if j.gender == rules.MALE)
+        if len(picks) == 6 and (men != 5):
+            errors.append("Drużyna marzeń: dokładnie 5 skoczków i 1 skoczkini.")
+
+    use = BonusUse(
+        player=player,
+        code=code,
+        weekend=weekend,
+        competition=competition,
+        target_player=target_player
+        if code in bonuses.PLAYER_TARGETING or code == bonuses.STEAL
+        else None,
+        target_jumper=target_jumper,
+        give_jumper=give_jumper if code == bonuses.STEAL else None,
+        picks=[j.pk for j in picks] if code in (bonuses.TYPER, bonuses.DREAM_TEAM) else [],
+        made_by=made_by,
+    )
+    try:
+        use.full_clean()
+    except ValidationError as error:
+        errors.extend(error.messages)
+    if errors:
+        raise BonusError(list(dict.fromkeys(errors)))
+    use.save()
+    return use
+
+
+def cancel_bonus(use: BonusUse, *, override: bool = False, now=None) -> None:
+    """Cofa użycie bonusu (tylko przed startem konkursu/weekendu, chyba że tryb admina)."""
+    spec = SPECS[use.code]
+    locked = (
+        use.competition.is_locked(now)
+        if spec.scope is Scope.COMPETITION and use.competition
+        else use.weekend.is_locked(now)
+    )
+    if locked and not override:
+        raise BonusError(["Za późno na cofnięcie - konkurs lub weekend już się rozpoczął."])
+    use.delete()
+
+
+def bonus_is_locked(use: BonusUse, now=None) -> bool:
+    spec = SPECS[use.code]
+    if spec.scope is Scope.COMPETITION and use.competition:
+        return use.competition.is_locked(now)
+    return use.weekend.is_locked(now)
+
+
+def describe_bonus(use: BonusUse, *, hide_secret: bool = False) -> str:
+    """Opis użycia bonusu (cel, zawodnicy). Wybory typera i drużyny marzeń można ukryć."""
+    parts: list[str] = []
+    if use.competition:
+        parts.append(use.competition.name)
+    if use.target_player:
+        parts.append(f"na: {use.target_player.name}")
+    if use.code == bonuses.STEAL and use.target_jumper and use.give_jumper:
+        parts.append(f"bierze {use.target_jumper.name}, oddaje {use.give_jumper.name}")
+    elif use.target_jumper:
+        parts.append(use.target_jumper.name)
+    if use.picks:
+        if hide_secret:
+            parts.append("wybór ukryty do startu konkursu")
+        else:
+            names = {j.pk: j.name for j in Jumper.objects.filter(pk__in=use.picks)}
+            parts.append(", ".join(names.get(pk, "?") for pk in use.picks))
+    return " · ".join(parts)

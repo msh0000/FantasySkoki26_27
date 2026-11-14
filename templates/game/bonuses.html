@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Bonusy{% endblock %}
+{% block content %}
+{% if not weekend %}
+<article><p class="muted">Brak weekendów w bazie.</p></article>
+{% else %}
+<article>
+  <h2>Bonusy: {{ weekend.name }}</h2>
+  <label>Weekend
+    <select onchange="if (this.value) location = this.value">
+      {% for w in weekends %}
+      <option value="{% url 'bonuses_for' w.pk %}" {% if w.pk == weekend.pk %}selected{% endif %}>{{ w.name }} ({{ w.start_date|date:"d.m.Y" }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <p class="muted">
+    Bonusy konkursowe można odpalić do startu danego konkursu, weekendowe do startu pierwszego konkursu
+    weekendu. Do tego czasu możesz też cofnąć użycie. Każdy bonus działa raz na sezon (Typer 3 razy),
+    a gracz może mieć jeden bonus na konkurs i jeden na weekend. Możesz odpalić bonus także za innego gracza.
+  </p>
+  {% if weekend_locked %}<p><strong>Weekend rozpoczęty</strong> - bonusy weekendowe są zablokowane.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Odpal bonus</h3>
+  <form method="post" action="{% url 'bonus_use' weekend.pk %}" id="bonus-form">
+    {% csrf_token %}
+    <label>Gracz
+      <select name="player" required>
+        {% for p in players %}<option value="{{ p.pk }}" {% if me and p.pk == me.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Bonus
+      <select name="code" id="bonus-code" required>
+        <option value="">-</option>
+        {% for spec in specs %}<option value="{{ spec.code }}" data-scope="{{ spec.scope.value }}">{{ spec.label }} ({% if spec.scope.value == "weekend" %}weekend{% else %}konkurs{% endif %})</option>{% endfor %}
+      </select>
+    </label>
+
+    <div class="grp" data-scope="competition">
+      <label>Konkurs
+        <select name="competition">
+          <option value="">-</option>
+          {% for c in competitions %}<option value="{{ c.pk }}">{{ c.name }} ({{ c.start_at|date:"d.m H:i" }})</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="double_captain wind blacklist patriot">
+      <label>Zawodnik
+        <select name="tj">{% include "game/_jumper_options.html" %}</select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="steal duel reversed">
+      <label>Gracz, na którego używasz
+        <select name="tp">
+          <option value="">-</option>
+          {% for p in players %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="steal">
+      <label>Zawodnik, którego bierzesz (z drużyny wskazanego gracza)
+        <select name="sj">{% include "game/_jumper_options.html" %}</select>
+      </label>
+      <label>Zawodnik, którego oddajesz (z drużyny gracza używającego bonusu)
+        <select name="gj">{% include "game/_jumper_options.html" %}</select>
+      </label>
+    </div>
+
+    <div class="grp" data-codes="typer">
+      <p class="muted">Wytypuj top 5 w kolejności miejsc 1-5 (tylko mężczyźni): trafiony zawodnik w top 5 = 3 pkt, trafione dokładne miejsce = 8 pkt.</p>
+      {% for n in "12345" %}
+      <label>Miejsce {{ n }}
+        <select name="t{{ n }}">{% include "game/_jumper_options.html" %}</select>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="grp" data-codes="dream_team">
+      <p class="muted">Twój skład na ten konkurs: 5 skoczków i 1 skoczkini (dowolni, także cudzy).</p>
+      {% for n in "12345" %}
+      <label>Skoczek {{ n }}
+        <select name="d{{ n }}">{% include "game/_jumper_options.html" %}</select>
+      </label>
+      {% endfor %}
+      <label>Skoczkini
+        <select name="dk">{% include "game/_jumper_options.html" %}</select>
+      </label>
+    </div>
+
+    {% if user.is_staff %}
+    <label><input type="checkbox" name="override" value="1"> Tryb admina (pomiń blokadę po starcie)</label>
+    {% endif %}
+    <button type="submit">Odpal bonus</button>
+  </form>
+</article>
+
+<article>
+  <h3>Użyte w tym weekendzie</h3>
+  {% if rows %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Gracz</th><th>Bonus</th><th>Szczegóły</th><th></th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.use.player.name }}</td>
+        <td>{{ row.label }}</td>
+        <td>{{ row.description }}</td>
+        <td>
+          {% if not row.locked or user.is_staff %}
+          <form method="post" action="{% url 'bonus_cancel' row.use.pk %}" style="margin:0"
+                onsubmit="return confirm('Cofnąć ten bonus?')">
+            {% csrf_token %}<button class="outline secondary" type="submit">Cofnij</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Jeszcze nikt nie odpalił bonusu w tym weekendzie.</p>{% endif %}
+</article>
+
+{% if overview %}
+<article>
+  <h3>Moje bonusy w sezonie</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Bonus</th><th>Typ</th><th class="points">Użyty</th></tr></thead>
+    <tbody>
+      {% for bonus in overview %}
+      <tr {% if not bonus.available %}class="muted"{% endif %}>
+        <td>{{ bonus.label }}</td><td>{{ bonus.scope }}</td><td class="points">{{ bonus.used }}/{{ bonus.limit }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</article>
+{% endif %}
+
+<script>
+  (function () {
+    var select = document.getElementById("bonus-code");
+    var groups = document.querySelectorAll("#bonus-form .grp");
+    function update() {
+      var option = select.options[select.selectedIndex];
+      var code = select.value;
+      var scope = option ? option.getAttribute("data-scope") : "";
+      groups.forEach(function (group) {
+        var codes = group.getAttribute("data-codes");
+        var groupScope = group.getAttribute("data-scope");
+        var visible = false;
+        if (codes) visible = codes.split(" ").indexOf(code) !== -1;
+        if (groupScope) visible = scope === groupScope;
+        group.hidden = !visible;
+      });
+    }
+    select.addEventListener("change", update);
+    update();
+  })();
+</script>
+{% endif %}
+{% endblock %}

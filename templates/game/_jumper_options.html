@@ -1,0 +1,7 @@
+<option value="">-</option>
+<optgroup label="Skoczkowie">
+  {% for jumper in men %}<option value="{{ jumper.pk }}">{{ jumper.name }} ({{ jumper.country }}){% if jumper.owner %} - {{ jumper.owner.name }}{% endif %}</option>{% endfor %}
+</optgroup>
+<optgroup label="Skoczkinie">
+  {% for jumper in women %}<option value="{{ jumper.pk }}">{{ jumper.name }} ({{ jumper.country }}){% if jumper.owner %} - {{ jumper.owner.name }}{% endif %}</option>{% endfor %}
+</optgroup>

@@ -15,4 +15,8 @@ urlpatterns = [
     path("transfery/<int:weekend_id>/wykonaj/", views.transfer_make, name="transfer_make"),
     path("transfery/<int:weekend_id>/potwierdz/", views.transfer_confirm, name="transfer_confirm"),
     path("transfery/<int:weekend_id>/zakoncz/", views.transfer_pass, name="transfer_pass"),
+    path("bonusy/", views.bonuses_page, name="bonuses"),
+    path("bonusy/<int:weekend_id>/", views.bonuses_page, name="bonuses_for"),
+    path("bonusy/<int:weekend_id>/uzyj/", views.bonus_use, name="bonus_use"),
+    path("bonusy/cofnij/<int:use_id>/", views.bonus_cancel, name="bonus_cancel"),
 ]
