@@ -175,6 +175,8 @@ def make_transfer(
         raise TransferError("Oddawany zawodnik nie należy do tego gracza.")
     if in_jumper.owner_id is not None:
         raise TransferError("Wybrany zawodnik ma już właściciela.")
+    if not in_jumper.active:
+        raise TransferError("Ten zawodnik nie należy do puli dostępnych zawodników.")
     if out_jumper.gender != in_jumper.gender:
         raise TransferError("Można zamienić tylko zawodnika na zawodnika tej samej płci.")
     if enforce_queue and not can_transfer(weekend, player):

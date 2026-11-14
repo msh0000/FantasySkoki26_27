@@ -11,6 +11,7 @@ pip install -q -r requirements.txt
 python manage.py migrate
 python manage.py collectstatic --noinput -v0
 python manage.py load_snapshot
+python manage.py import_jumper_list
 
 # Przeładowanie aplikacji (to samo co przycisk Reload w zakładce Web).
 WSGI=/var/www/msh0000_pythonanywhere_com_wsgi.py

@@ -362,3 +362,87 @@ def test_load_snapshot_fills_database(tmp_path):
     again = sync.load_snapshot(tmp_path)  # drugie wczytanie niczego nie dubluje
     assert again["competitions_created"] == 0
     assert Result.objects.filter(competition=competition).count() == 50
+
+
+# --- Lista zawodników w grze ----------------------------------------------------------------
+
+
+def test_names_match_variants():
+    from game.importers.names import names_match
+
+    assert names_match("HOERL Jan", "Jan Hoerl")
+    assert names_match("NIŻNIK Adam", "NIZNIK Adam")
+    assert names_match("SPULBER Mihnea Alex", "SPULBER Mihnea Alexandru")
+    assert not names_match("KOBAYASHI Ryoyu", "KOBAYASHI Junshiro")
+    assert not names_match("STEINBERGER Jakob", "STEINBERGER Simon")
+    assert not names_match("", "")
+
+
+def test_read_jumper_list_from_repo_file():
+    from game.importers.jumper_list import read_jumper_list
+
+    rows = read_jumper_list(Path(__file__).parents[2] / "data" / "jumpers_list.tsv")
+    assert len(rows) == 198
+    assert sum(r.gender == "M" for r in rows) == 129
+    assert sum(r.gender == "K" for r in rows) == 69
+    assert all(r.country for r in rows if r.name != "LOUTITT Alexandria")
+    assert len({r.external_id for r in rows if r.external_id}) == sum(
+        bool(r.external_id) for r in rows
+    )  # numery się nie powtarzają
+
+
+@pytest.mark.django_db
+def test_import_jumper_list_matches_by_id_and_name_and_sets_pool():
+    from game.importers.jumper_list import ListRow
+
+    by_id = Jumper.objects.create(name="HOERL Jan", country="AUT", gender="M", external_id="3258")
+    by_name = Jumper.objects.create(name="Kapustik Hector", country="", gender="M")
+    outsider = Jumper.objects.create(name="NIE NA LISCIE", country="POL", gender="M")
+
+    report = sync.import_jumper_list(
+        [
+            ListRow("HOERL Jan", "AUT", "M", "3258"),
+            ListRow("KAPUSTIK Hector", "SVK", "M", "9999"),
+            ListRow("NOWY Zawodnik", "POL", "M", ""),
+        ]
+    )
+    assert report == {"created": 1, "updated": 2, "deactivated": 1}
+    by_name.refresh_from_db()
+    assert (by_name.external_id, by_name.country, by_name.active) == ("9999", "SVK", True)
+    outsider.refresh_from_db()
+    assert outsider.active is False
+    by_id.refresh_from_db()
+    assert by_id.active is True
+
+    again = sync.import_jumper_list(
+        [ListRow("HOERL Jan", "AUT", "M", "3258")], deactivate_others=False
+    )
+    assert again["created"] == 0
+
+
+@pytest.mark.django_db
+def test_results_attach_site_id_to_listed_jumper_without_id():
+    listed = Jumper.objects.create(name="TSCHOFENIG Daniel", country="AUT", gender="M")
+    comp = _competition("M", "5543")
+    sync.import_results(comp, fixture("result_men_individual.html"))
+    listed.refresh_from_db()
+    assert listed.external_id == "3495"
+    assert Jumper.objects.filter(name__icontains="Tschofenig").count() == 1
+    # Nowi zawodnicy spoza listy gry trafiają do bazy jako nieaktywni.
+    assert Jumper.objects.filter(active=False).count() == 49
+
+
+@pytest.mark.django_db
+def test_transfer_requires_active_jumper():
+    from django.contrib.auth import get_user_model
+
+    from game import services
+    from game.models import Player
+
+    user = get_user_model().objects.create_user("x", password="y")
+    player = Player.objects.create(user=user, name="X")
+    mine = Jumper.objects.create(name="A", country="POL", gender="M", owner=player)
+    inactive = Jumper.objects.create(name="B", country="POL", gender="M", active=False)
+    weekend = Weekend.objects.create(name="W", start_date=timezone.now().date())
+    with pytest.raises(services.TransferError):
+        services.make_transfer(weekend, player, mine, inactive, enforce_queue=False)

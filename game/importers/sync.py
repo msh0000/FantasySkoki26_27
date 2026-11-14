@@ -13,6 +13,8 @@ from game.models import Competition, Jumper, Result, Weekend
 
 from . import skijumping_pl as sp
 from . import snapshot
+from .jumper_list import ListRow
+from .names import names_match
 
 DEFAULT_START = time(12, 0)  # strona podaje tylko daty - godziny poprawiamy w adminie
 
@@ -86,13 +88,61 @@ def import_calendar(
 def import_jumpers(rows: list[sp.JumperRow], gender: str) -> dict[str, int]:
     created = existing = 0
     for row in rows:
+        # Pulę do wyboru wyznacza lista z pliku (import_jumper_list), więc nowi są nieaktywni.
         _, is_new = Jumper.objects.get_or_create(
             external_id=row.external_id,
-            defaults={"name": row.name, "country": row.country, "gender": gender},
+            defaults={
+                "name": row.name,
+                "country": row.country,
+                "gender": gender,
+                "active": False,
+            },
         )
         created += is_new
         existing += not is_new
     return {"created": created, "existing": existing}
+
+
+@transaction.atomic
+def import_jumper_list(rows: list[ListRow], *, deactivate_others: bool = True) -> dict[str, int]:
+    """Wczytuje listę zawodników w grze: dopasowuje do istniejących (numer lub nazwisko),
+    uzupełnia dane, ustawia ich jako aktywnych, a pozostałych (spoza listy) jako nieaktywnych.
+    """
+    existing = list(Jumper.objects.all())
+    by_external = {j.external_id: j for j in existing if j.external_id}
+    created = updated = 0
+    listed_ids: set[int] = set()
+
+    for row in rows:
+        jumper = by_external.get(row.external_id) if row.external_id else None
+        if jumper is None:
+            candidates = [j for j in existing if j.id not in listed_ids and j.gender == row.gender]
+            jumper = next((j for j in candidates if names_match(j.name, row.name)), None)
+        if jumper is None:
+            jumper = Jumper.objects.create(
+                name=row.name,
+                country=row.country,
+                gender=row.gender,
+                external_id=row.external_id,
+            )
+            existing.append(jumper)
+            created += 1
+        else:
+            jumper.gender = row.gender or jumper.gender
+            jumper.country = row.country or jumper.country
+            if row.external_id and not jumper.external_id:
+                jumper.external_id = row.external_id
+            updated += 1
+        jumper.active = True
+        jumper.save()
+        listed_ids.add(jumper.id)
+
+    deactivated = 0
+    if deactivate_others:
+        deactivated = (
+            Jumper.objects.exclude(id__in=listed_ids).filter(active=True).update(active=False)
+        )
+    return {"created": created, "updated": updated, "deactivated": deactivated}
 
 
 @dataclass
@@ -118,19 +168,36 @@ def save_results(
     report = ResultsReport()
     known = {j.external_id: j for j in Jumper.objects.exclude(external_id="")}
 
+    without_id = [j for j in Jumper.objects.filter(external_id="")]
+
     for row in rows:
         if row.external_id in known:
             continue
         gender = (
             genders.get(row.external_id, "")
             if competition.gender == rules.MIXED
-            else (competition.gender)
+            else competition.gender
         )
         if not gender:
             report.unknown_gender.append(f"{row.name} ({row.external_id})")
             continue
+        # Zawodnik z listy gry bez numeru ze skijumping.pl: dopasowujemy po nazwisku.
+        match = next(
+            (j for j in without_id if j.gender == gender and names_match(j.name, row.name)), None
+        )
+        if match is not None:
+            without_id.remove(match)
+            match.external_id = row.external_id
+            match.country = match.country or row.country
+            match.save()
+            known[row.external_id] = match
+            continue
         known[row.external_id] = Jumper.objects.create(
-            name=row.name, country=row.country, gender=gender, external_id=row.external_id
+            name=row.name,
+            country=row.country,
+            gender=gender,
+            external_id=row.external_id,
+            active=False,  # spoza listy gry - do włączenia w adminie
         )
         report.created_jumpers.append(row.name)
 
