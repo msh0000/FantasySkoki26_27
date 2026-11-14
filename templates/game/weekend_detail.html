@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ weekend.name }}{% endblock %}
 {% block content %}
+<header class="page-head">
+  <div class="kicker">Weekend · {{ weekend.start_date|date:"d.m.Y" }}</div>
+  <h1>{{ weekend.name }}</h1>
+  <p class="sub">Konkursy, bonusy i punkty graczy z tego weekendu.</p>
+  <div class="ticks"></div>
+</header>
+
 <article>
-  <h2>{{ weekend.name }} <small class="muted">{{ weekend.start_date|date:"d.m.Y" }}</small></h2>
-  {% if locked %}
+    {% if locked %}
     <p class="muted">Weekend rozpoczęty - transfery i bonusy są zablokowane.</p>
   {% endif %}
 

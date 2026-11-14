@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Draft{% endblock %}
 {% block content %}
+<header class="page-head">
+  <div class="kicker">Panel admina</div>
+  <h1>Draft</h1>
+  <p class="sub">Przypisanie zawodników do graczy po drafcie.</p>
+  <div class="ticks"></div>
+</header>
+
 <article>
-  <h2>Draft: składy graczy</h2>
+  <h3>Składy graczy</h3>
   <p class="muted">
     Każdy gracz: 5 skoczków i 1 skoczkini. Pola mogą zostać puste. Zapis <strong>zastępuje</strong>
     dotychczasowe składy wszystkich graczy. Ten sam zawodnik nie może być u dwóch osób.

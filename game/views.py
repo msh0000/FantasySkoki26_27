@@ -17,13 +17,33 @@ def _current_player(request) -> Player | None:
 
 @login_required
 def home(request):
-    standings = services.season_standings()
+    overview = services.season_overview()
     players = {p.id: p for p in Player.objects.all()}
-    rows = sorted(
-        ((players[pid], pts) for pid, pts in standings.items() if pid in players),
-        key=lambda row: (-row[1], row[0].order),
+    ordered = sorted(
+        (pid for pid in overview["totals"] if pid in players),
+        key=lambda pid: (-overview["totals"][pid], players[pid].order),
     )
-    return render(request, "game/home.html", {"rows": rows, "me": _current_player(request)})
+    leader = max((overview["totals"][pid] for pid in ordered), default=0) or 1
+    rows = [
+        {
+            "rank": index,
+            "player": players[pid],
+            "total": overview["totals"][pid],
+            "delta": overview["last_scores"].get(pid, 0),
+            "pct": max(0, round(100 * overview["totals"][pid] / leader)),
+        }
+        for index, pid in enumerate(ordered, start=1)
+    ]
+    return render(
+        request,
+        "game/home.html",
+        {
+            "podium": rows[:3],
+            "rest": rows[3:],
+            "last_weekend": overview["last_weekend"],
+            "me": _current_player(request),
+        },
+    )
 
 
 @login_required

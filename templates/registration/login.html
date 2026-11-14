@@ -1,12 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Logowanie{% endblock %}
-{% block content %}
-<article>
-  <h2>Logowanie</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Zaloguj</button>
-  </form>
-</article>
+{% block title %}Logowanie · Fantasy Skoki{% endblock %}
+{% block auth %}
+<div class="auth">
+  <section class="auth-hero">
+    <div class="kicker" style="color:#9fb4cc;position:relative">Prywatna liga · 7 graczy</div>
+    <h1>Fantasy<span>Skoki 26/27</span></h1>
+    <p>Składy, transfery i bonusy na cały sezon Pucharu Świata. Wyniki liczą się same.</p>
+  </section>
+  <section class="auth-form">
+    <form method="post">
+      {% csrf_token %}
+      <h2>Zaloguj się</h2>
+      {% if form.errors %}<div class="msg error">Nieprawidłowa nazwa użytkownika lub hasło.</div>{% endif %}
+      <label>Nazwa użytkownika
+        <input type="text" name="username" autocomplete="username" autofocus required>
+      </label>
+      <label>Hasło
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit">Wejdź na skocznię</button>
+    </form>
+  </section>
+</div>
 {% endblock %}

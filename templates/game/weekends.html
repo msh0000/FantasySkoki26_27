@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Weekendy{% endblock %}
 {% block content %}
+<header class="page-head">
+  <div class="kicker">Kalendarz</div>
+  <h1>Weekendy</h1>
+  <p class="sub">Najbliższe weekendy i te, które już się rozpoczęły.</p>
+  <div class="ticks"></div>
+</header>
+
 <article>
-  <h2>Nadchodzące weekendy</h2>
+  <h3>Nadchodzące</h3>
   {% if upcoming %}
   <div class="scroll">
   <table>
@@ -22,7 +29,7 @@
 </article>
 
 <article>
-  <h2>Rozpoczęte i zakończone</h2>
+  <h3>Rozpoczęte i zakończone</h3>
   {% if past %}
   <ul>
     {% for item in past %}

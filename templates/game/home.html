@@ -1,24 +1,40 @@
 {% extends "base.html" %}
+{% block title %}Ranking · Fantasy Skoki{% endblock %}
 {% block content %}
-<article>
-  <h2>Ranking sezonu</h2>
-  {% if rows %}
-  <div class="scroll">
-  <table>
-    <thead><tr><th>#</th><th>Gracz</th><th class="points">Punkty</th></tr></thead>
-    <tbody>
-      {% for player, points in rows %}
-      <tr {% if me and player.pk == me.pk %}class="me"{% endif %}>
-        <td>{{ forloop.counter }}</td>
-        <td><a href="{% url 'team_of' player.pk %}">{{ player.name }}</a></td>
-        <td class="points">{{ points|floatformat:"-1" }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<header class="page-head">
+  <div class="kicker">Sezon 26/27</div>
+  <h1>Ranking</h1>
+  {% if last_weekend %}<p class="sub">Po weekendzie: <strong>{{ last_weekend.name }}</strong>. Zielona strzałka to punkty z tego weekendu.</p>{% else %}<p class="sub">Jeszcze nie rozegrano żadnego konkursu.</p>{% endif %}
+  <div class="ticks"></div>
+</header>
+
+{% if podium %}
+<section class="podium">
+  {% for row in podium %}
+  <div class="bib {% if forloop.counter == 1 %}first{% elif forloop.counter == 2 %}second{% else %}third{% endif %} {% if me and row.player.pk == me.pk %}me{% endif %}">
+    <div class="tag">{% if forloop.counter == 1 %}Lider · żółty plastron{% else %}{{ forloop.counter }}. miejsce{% endif %}</div>
+    <div class="name"><a href="{% url 'team_of' row.player.pk %}">{{ row.player.name }}</a></div>
+    <div class="score">{{ row.total|floatformat:"-1" }}<small>PKT</small></div>
+    {% if row.delta %}<div class="delta {% if row.delta > 0 %}up{% endif %}">{% if row.delta > 0 %}▲ +{% endif %}{{ row.delta|floatformat:"-1" }} w ostatnim weekendzie</div>{% endif %}
+    <div class="place">{{ forloop.counter }}</div>
   </div>
-  {% else %}
-  <p>Brak graczy. Dodaj ich w panelu admina.</p>
-  {% endif %}
+  {% endfor %}
+</section>
+{% if rest %}
+<article>
+  <h3>Reszta stawki</h3>
+  {% for row in rest %}
+  <div class="rank-row {% if me and row.player.pk == me.pk %}me{% endif %}">
+    <div class="num">{{ row.rank }}</div>
+    <div class="who-name"><a href="{% url 'team_of' row.player.pk %}">{{ row.player.name }}</a>
+      {% if row.delta %}<span class="delta {% if row.delta > 0 %}up{% endif %}">{% if row.delta > 0 %}▲ +{% endif %}{{ row.delta|floatformat:"-1" }}</span>{% endif %}</div>
+    <div class="score">{{ row.total|floatformat:"-1" }}</div>
+    <div class="bar"><i style="width: {{ row.pct }}%"></i></div>
+  </div>
+  {% endfor %}
 </article>
+{% endif %}
+{% else %}
+<article><p class="muted">Brak graczy. Dodaj ich w panelu admina.</p></article>
+{% endif %}
 {% endblock %}

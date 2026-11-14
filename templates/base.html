@@ -1,57 +1,86 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}Fantasy Skoki{% endblock %}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <style>
-    nav ul.menu { flex-wrap: wrap; }
-    .points { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-    .me { font-weight: 700; }
-    .muted { color: var(--pico-muted-color); }
-    details summary { cursor: pointer; }
-    .scroll { overflow-x: auto; }
-  </style>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-  <header class="container">
-    <nav>
-      <ul><li><strong><a href="{% url 'home' %}" class="contrast">Fantasy Skoki 26/27</a></strong></li></ul>
-      {% if user.is_authenticated %}
-      <ul>
-        <li>{{ user.get_username }}</li>
-        <li>
-          <form method="post" action="{% url 'logout' %}" style="margin:0">
-            {% csrf_token %}<button class="outline secondary" type="submit">Wyloguj</button>
-          </form>
-        </li>
-      </ul>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-rank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M4 20V11h5v9M9.5 20V4h5v16M15 20v-6h5v6M3 20h18"/></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><circle cx="12" cy="7" r="3.2"/><path d="M5 21v-3.5a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4V21"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M3 6h18v15H3zM3 11h18M8 3v5M16 3v5"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M4 8h14l-4-4M20 16H6l4 4"/></symbol>
+    <symbol id="i-draft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M4 5h16M4 12h16M4 19h10"/></symbol>
+    <symbol id="i-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  </defs>
+</svg>
+
+{% if user.is_authenticated %}
+{% with page=request.resolver_match.url_name %}
+<div class="shell">
+  <aside class="side">
+    <div class="side-head">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark">FS</span>
+        <span class="brand-name">Fantasy Skoki<small>Sezon 26/27</small></span>
+      </a>
+    </div>
+    <nav aria-label="Menu główne">
+      <a class="nav {% if page == 'home' %}active{% endif %}" href="{% url 'home' %}"><svg><use href="#i-rank"/></svg>Ranking</a>
+      <a class="nav {% if page == 'team' or page == 'team_of' %}active{% endif %}" href="{% url 'team' %}"><svg><use href="#i-team"/></svg>Moja drużyna</a>
+      <a class="nav {% if page == 'weekends' or page == 'weekend_detail' %}active{% endif %}" href="{% url 'weekends' %}"><svg><use href="#i-cal"/></svg>Weekendy</a>
+      <a class="nav {% if page == 'transfers' or page == 'transfers_for' %}active{% endif %}" href="{% url 'transfers' %}"><svg><use href="#i-swap"/></svg>Transfery</a>
+      {% if user.is_staff %}
+      <div class="side-sep">Admin</div>
+      <a class="nav {% if page == 'draft' %}active{% endif %}" href="{% url 'draft' %}"><svg><use href="#i-draft"/></svg>Draft</a>
+      <a class="nav" href="{% url 'admin:index' %}"><svg><use href="#i-admin"/></svg>Panel</a>
       {% endif %}
     </nav>
-    {% if user.is_authenticated %}
-    <nav>
-      <ul class="menu">
-        <li><a href="{% url 'home' %}">Ranking</a></li>
-        <li><a href="{% url 'team' %}">Moja drużyna</a></li>
-        <li><a href="{% url 'weekends' %}">Weekendy</a></li>
-        <li><a href="{% url 'transfers' %}">Transfery</a></li>
-        {% if user.is_staff %}
-        <li><a href="{% url 'draft' %}">Draft</a></li>
-        <li><a href="{% url 'admin:index' %}">Admin</a></li>
-        {% endif %}
-      </ul>
-    </nav>
-    {% endif %}
-  </header>
-  <main class="container">
-    {% if messages %}
+    <div class="side-foot">
+      <div class="who">{{ user.get_username }}<small>zalogowany</small></div>
+      <form method="post" action="{% url 'logout' %}" style="margin:0">
+        {% csrf_token %}<button class="outline" type="submit">Wyloguj</button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark">FS</span>
+        <span class="brand-name">Fantasy Skoki<small>Sezon 26/27</small></span>
+      </a>
+      <form method="post" action="{% url 'logout' %}" style="margin:0">
+        {% csrf_token %}<button class="outline" type="submit" style="color:#dfe8f3;border-color:#4b6584;padding:7px 12px;font-size:.85rem">Wyloguj</button>
+      </form>
+    </header>
+
+    <main class="page">
       {% for message in messages %}
-        <article {% if message.tags == 'error' %}style="border-left: 4px solid var(--pico-del-color)"{% endif %}>{{ message }}</article>
+        <div class="msg {{ message.tags }}">{{ message }}</div>
       {% endfor %}
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<nav class="tabbar" aria-label="Menu">
+  <a class="{% if page == 'home' %}active{% endif %}" href="{% url 'home' %}"><svg><use href="#i-rank"/></svg>Ranking</a>
+  <a class="{% if page == 'team' or page == 'team_of' %}active{% endif %}" href="{% url 'team' %}"><svg><use href="#i-team"/></svg>Drużyna</a>
+  <a class="{% if page == 'weekends' or page == 'weekend_detail' %}active{% endif %}" href="{% url 'weekends' %}"><svg><use href="#i-cal"/></svg>Weekendy</a>
+  <a class="{% if page == 'transfers' or page == 'transfers_for' %}active{% endif %}" href="{% url 'transfers' %}"><svg><use href="#i-swap"/></svg>Transfery</a>
+</nav>
+{% endwith %}
+{% else %}
+  {% block auth %}{% endblock %}
+{% endif %}
 </body>
 </html>

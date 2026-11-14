@@ -4,8 +4,15 @@
 {% if not weekend %}
 <article><p class="muted">Brak weekendów w bazie.</p></article>
 {% else %}
+<header class="page-head">
+  <div class="kicker">Okno transferowe</div>
+  <h1>Transfery</h1>
+  <p class="sub">W swojej kolejce możesz zrobić dowolnie wiele transferów, potem oddajesz pałeczkę dalej.</p>
+  <div class="ticks"></div>
+</header>
+
 <article>
-  <h2>Transfery: {{ weekend.name }}</h2>
+  <h3>{{ weekend.name }}</h3>
   <label>Weekend
     <select onchange="if (this.value) location = this.value">
       {% for w in weekends %}

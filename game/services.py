@@ -135,6 +135,21 @@ def season_standings(before: Weekend | None = None) -> dict[int, float]:
     return totals
 
 
+def season_overview() -> dict:
+    """Ranking sezonu z przyrostem z ostatniego weekendu, w którym ktoś zdobył punkty."""
+    totals = {pid: 0.0 for pid in Player.objects.values_list("id", flat=True)}
+    last_weekend = None
+    last_scores: dict[int, float] = {}
+    for weekend in Weekend.objects.all():
+        scores = weekend_scores(weekend)
+        for pid, score in scores.items():
+            totals[pid] = totals.get(pid, 0.0) + score.total
+        if any(score.total for score in scores.values()):
+            last_weekend = weekend
+            last_scores = {pid: score.total for pid, score in scores.items()}
+    return {"totals": totals, "last_weekend": last_weekend, "last_scores": last_scores}
+
+
 # --- Kolejka transferów ---------------------------------------------------------------------
 
 
