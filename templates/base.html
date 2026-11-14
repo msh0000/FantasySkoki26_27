@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Fantasy Skoki{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="container">
+    <nav>
+      <ul><li><strong><a href="{% url 'home' %}" class="contrast">Fantasy Skoki 26/27</a></strong></li></ul>
+      <ul>
+        {% if user.is_authenticated %}
+          <li>{{ user.get_username }}</li>
+          <li>
+            <form method="post" action="{% url 'logout' %}" style="margin:0">
+              {% csrf_token %}<button class="outline secondary" type="submit">Wyloguj</button>
+            </form>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </header>
+  <main class="container">{% block content %}{% endblock %}</main>
+</body>
+</html>
