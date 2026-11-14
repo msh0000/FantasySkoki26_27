@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ weekend.name }}{% endblock %}
+{% block content %}
+<article>
+  <h2>{{ weekend.name }} <small class="muted">{{ weekend.start_date|date:"d.m.Y" }}</small></h2>
+  {% if locked %}
+    <p class="muted">Weekend rozpoczęty - transfery i bonusy są zablokowane.</p>
+  {% endif %}
+
+  <h3>Konkursy</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Konkurs</th><th>Start</th><th>Wyniki</th></tr></thead>
+    <tbody>
+      {% for competition in competitions %}
+      <tr>
+        <td>{{ competition.name }}</td>
+        <td>{{ competition.start_at|date:"d.m H:i" }}</td>
+        <td>{% if competition.n_results %}są{% else %}<span class="muted">brak</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</article>
+
+<article>
+  <h3>Wyniki weekendu</h3>
+  {% for player, score in rows %}
+  <details {% if me and player.pk == me.pk %}open{% endif %}>
+    <summary>
+      <span {% if me and player.pk == me.pk %}class="me"{% endif %}>{{ forloop.counter }}. {{ player.name }}</span>
+      <strong style="float:right">{{ score.total|floatformat:"-1" }} pkt</strong>
+    </summary>
+    {% if score.lines %}
+    <div class="scroll">
+    <table>
+      <tbody>
+        {% for label, points in score.lines %}
+        <tr><td>{{ label }}</td><td class="points">{{ points|floatformat:"-1" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Brak punktów.</p>
+    {% endif %}
+  </details>
+  {% empty %}
+  <p class="muted">Brak graczy.</p>
+  {% endfor %}
+</article>
+{% endblock %}

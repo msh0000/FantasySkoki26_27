@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Weekendy{% endblock %}
+{% block content %}
+<article>
+  <h2>Nadchodzące weekendy</h2>
+  {% if upcoming %}
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Weekend</th><th>Start pierwszego konkursu</th><th class="points">Konkursy</th></tr></thead>
+    <tbody>
+      {% for item in upcoming %}
+      <tr>
+        <td><a href="{% url 'weekend_detail' item.weekend.pk %}">{{ item.weekend.name }}</a></td>
+        <td>{% if item.first %}{{ item.first|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
+        <td class="points">{{ item.weekend.n_competitions }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Brak nadchodzących weekendów.</p>{% endif %}
+</article>
+
+<article>
+  <h2>Rozpoczęte i zakończone</h2>
+  {% if past %}
+  <ul>
+    {% for item in past %}
+    <li><a href="{% url 'weekend_detail' item.weekend.pk %}">{{ item.weekend.name }}</a>
+      <span class="muted">({{ item.first|date:"d.m.Y" }})</span></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Jeszcze nic się nie rozpoczęło.</p>{% endif %}
+</article>
+{% endblock %}

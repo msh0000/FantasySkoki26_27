@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Draft{% endblock %}
+{% block content %}
+<article>
+  <h2>Draft: składy graczy</h2>
+  <p class="muted">
+    Każdy gracz: 5 skoczków i 1 skoczkini. Pola mogą zostać puste. Zapis <strong>zastępuje</strong>
+    dotychczasowe składy wszystkich graczy. Ten sam zawodnik nie może być u dwóch osób.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {% for form in forms %}
+    <fieldset>
+      <legend><strong>{{ form.player.name }}</strong></legend>
+      {% if form.extra %}
+      <p style="color: var(--pico-del-color)">
+        Uwaga: ma obecnie więcej zawodników niż pól. Zostaną zwolnieni:
+        {% for jumper in form.extra %}{{ jumper.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+      </p>
+      {% endif %}
+      {{ form.as_div }}
+    </fieldset>
+    {% endfor %}
+    <button type="submit">Zapisz składy</button>
+  </form>
+</article>
+{% endblock %}

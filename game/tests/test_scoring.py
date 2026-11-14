@@ -148,3 +148,9 @@ def test_duel_win_and_loss_are_computed_on_pre_duel_totals():
 def test_weekend_without_competitions_gives_no_winner_bonus(players):
     result = score_weekend(competitions=[], jumpers=JUMPERS, players=players)
     assert all(s.total == 0 for s in result.values())
+
+
+def test_no_winner_bonus_when_nobody_scored_anything():
+    # Konkurs z wynikami, ale nikt nie ma jeszcze drużyny (np. przed draftem).
+    result = score_weekend(competitions=[comp({1: [], 2: []})], jumpers=JUMPERS, players=[1, 2])
+    assert totals(result) == {1: 0, 2: 0}

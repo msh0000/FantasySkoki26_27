@@ -3,14 +3,20 @@
 <article>
   <h2>Ranking sezonu</h2>
   {% if rows %}
+  <div class="scroll">
   <table>
-    <thead><tr><th>#</th><th>Gracz</th><th>Punkty</th></tr></thead>
+    <thead><tr><th>#</th><th>Gracz</th><th class="points">Punkty</th></tr></thead>
     <tbody>
       {% for player, points in rows %}
-      <tr><td>{{ forloop.counter }}</td><td>{{ player.name }}</td><td>{{ points|floatformat:"-1" }}</td></tr>
+      <tr {% if me and player.pk == me.pk %}class="me"{% endif %}>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'team_of' player.pk %}">{{ player.name }}</a></td>
+        <td class="points">{{ points|floatformat:"-1" }}</td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p>Brak graczy. Dodaj ich w panelu admina.</p>
   {% endif %}

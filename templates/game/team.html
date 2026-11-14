@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Drużyna: {{ player.name }}{% endblock %}
+{% block content %}
+<article>
+  <h2>{% if is_me %}Moja drużyna{% else %}Drużyna: {{ player.name }}{% endif %}</h2>
+
+  <p class="muted">
+    Zobacz drużynę:
+    {% for p in players %}<a href="{% url 'team_of' p.pk %}" {% if p.pk == player.pk %}class="me"{% endif %}>{{ p.name }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+  </p>
+
+  <h3>Skoczkowie</h3>
+  {% if men %}
+  <ul>
+    {% for jumper in men %}<li>{{ jumper.name }} <span class="muted">({{ jumper.country }})</span></li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">Brak skoczków.</p>{% endif %}
+
+  <h3>Skoczkini</h3>
+  {% if women %}
+  <ul>
+    {% for jumper in women %}<li>{{ jumper.name }} <span class="muted">({{ jumper.country }})</span></li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">Brak skoczkini.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Bonusy</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Bonus</th><th>Typ</th><th class="points">Użyty</th></tr></thead>
+    <tbody>
+      {% for bonus in bonuses %}
+      <tr {% if not bonus.available %}class="muted"{% endif %}>
+        <td>{{ bonus.label }}</td>
+        <td>{{ bonus.scope }}</td>
+        <td class="points">{{ bonus.used }}/{{ bonus.limit }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</article>
+{% endblock %}

@@ -193,3 +193,47 @@ def make_transfer(
     return Transfer.objects.create(
         weekend=weekend, player=player, out_jumper=out_jumper, in_jumper=in_jumper, made_by=made_by
     )
+
+
+# --- Draft (przypisanie drużyn) ---------------------------------------------------------------
+
+
+def draft_conflicts(selection: dict[Player, list[Jumper]]) -> list[str]:
+    """Zawodnicy wybrani przez więcej niż jednego gracza lub wielokrotnie przez jednego."""
+    chosen_by: dict[int, tuple[Jumper, list[str]]] = {}
+    for player, jumpers in selection.items():
+        for jumper in jumpers:
+            chosen_by.setdefault(jumper.id, (jumper, []))[1].append(player.name)
+    return [
+        f"{jumper.name} jest wybrany więcej niż raz ({', '.join(names)})."
+        for jumper, names in chosen_by.values()
+        if len(names) > 1
+    ]
+
+
+@transaction.atomic
+def assign_rosters(selection: dict[Player, list[Jumper]]) -> None:
+    """Ustawia składy podanych graczy (zastępuje ich dotychczasowe)."""
+    Jumper.objects.filter(owner__in=list(selection)).update(owner=None)
+    for player, jumpers in selection.items():
+        Jumper.objects.filter(id__in=[j.id for j in jumpers]).update(owner=player)
+
+
+# --- Przegląd bonusów gracza -------------------------------------------------------------------
+
+
+def bonus_overview(player: Player) -> list[dict]:
+    """Dla każdego z 11 bonusów: ile razy użyty, limit i opis zasięgu."""
+    used: dict[str, int] = {}
+    for code in player.bonus_uses.values_list("code", flat=True):
+        used[code] = used.get(code, 0) + 1
+    return [
+        {
+            "label": spec.label,
+            "scope": "weekend" if spec.scope is Scope.WEEKEND else "konkurs",
+            "used": used.get(spec.code, 0),
+            "limit": spec.season_limit,
+            "available": used.get(spec.code, 0) < spec.season_limit,
+        }
+        for spec in SPECS.values()
+    ]

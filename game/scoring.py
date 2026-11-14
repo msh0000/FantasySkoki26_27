@@ -168,6 +168,8 @@ def score_weekend(
             for label, pts in score.lines:
                 target.add(f"{comp.label}: {label}", pts)
 
+    scored_anything = any(score.total != 0 for score in result.values())
+
     for player_id, score in result.items():
         fee = rules.transfer_fee(transfer_counts.get(player_id, 0))
         if fee:
@@ -186,7 +188,7 @@ def score_weekend(
         elif mine < theirs:
             result[b.player_id].add("Pojedynek przegrany", -DUEL_STAKE)
 
-    if competitions and result:
+    if scored_anything:
         best = max(s.total for s in result.values())
         for score in result.values():
             if score.total == best:

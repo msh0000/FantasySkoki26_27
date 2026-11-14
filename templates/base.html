@@ -6,23 +6,51 @@
   <title>{% block title %}Fantasy Skoki{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    nav ul.menu { flex-wrap: wrap; }
+    .points { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .me { font-weight: 700; }
+    .muted { color: var(--pico-muted-color); }
+    details summary { cursor: pointer; }
+    .scroll { overflow-x: auto; }
+  </style>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <header class="container">
     <nav>
       <ul><li><strong><a href="{% url 'home' %}" class="contrast">Fantasy Skoki 26/27</a></strong></li></ul>
+      {% if user.is_authenticated %}
       <ul>
-        {% if user.is_authenticated %}
-          <li>{{ user.get_username }}</li>
-          <li>
-            <form method="post" action="{% url 'logout' %}" style="margin:0">
-              {% csrf_token %}<button class="outline secondary" type="submit">Wyloguj</button>
-            </form>
-          </li>
+        <li>{{ user.get_username }}</li>
+        <li>
+          <form method="post" action="{% url 'logout' %}" style="margin:0">
+            {% csrf_token %}<button class="outline secondary" type="submit">Wyloguj</button>
+          </form>
+        </li>
+      </ul>
+      {% endif %}
+    </nav>
+    {% if user.is_authenticated %}
+    <nav>
+      <ul class="menu">
+        <li><a href="{% url 'home' %}">Ranking</a></li>
+        <li><a href="{% url 'team' %}">Moja drużyna</a></li>
+        <li><a href="{% url 'weekends' %}">Weekendy</a></li>
+        {% if user.is_staff %}
+        <li><a href="{% url 'draft' %}">Draft</a></li>
+        <li><a href="{% url 'admin:index' %}">Admin</a></li>
         {% endif %}
       </ul>
     </nav>
+    {% endif %}
   </header>
-  <main class="container">{% block content %}{% endblock %}</main>
+  <main class="container">
+    {% if messages %}
+      {% for message in messages %}
+        <article {% if message.tags == 'error' %}style="border-left: 4px solid var(--pico-del-color)"{% endif %}>{{ message }}</article>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
