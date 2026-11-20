@@ -1,0 +1,438 @@
+{
+ "external_id": "5752",
+ "rows": [
+  {
+   "country": "NOR",
+   "external_id": "2754",
+   "name": "LINDVIK Marius",
+   "points": 280.2,
+   "rank": 1,
+   "slug": "marius-lindvik",
+   "status": ""
+  },
+  {
+   "country": "NOR",
+   "external_id": "3314",
+   "name": "SUNDAL Kristoffer Eriksen",
+   "points": 278.2,
+   "rank": 2,
+   "slug": "kristoffer-eriksen-sundal",
+   "status": ""
+  },
+  {
+   "country": "AUT",
+   "external_id": "3258",
+   "name": "HOERL Jan",
+   "points": 274.5,
+   "rank": 3,
+   "slug": "jan-hoerl",
+   "status": ""
+  },
+  {
+   "country": "AUT",
+   "external_id": "3458",
+   "name": "ZIMMERMANN Raffael",
+   "points": 257.8,
+   "rank": 4,
+   "slug": "raffael-zimmermann",
+   "status": ""
+  },
+  {
+   "country": "JPN",
+   "external_id": "2600",
+   "name": "KOBAYASHI Ryoyu",
+   "points": 252.8,
+   "rank": 5,
+   "slug": "ryoyu-kobayashi",
+   "status": ""
+  },
+  {
+   "country": "NOR",
+   "external_id": "3413",
+   "name": "HANSEN Gyda Westvold",
+   "points": 249.6,
+   "rank": 6,
+   "slug": "gyda-westvold-hansen",
+   "status": ""
+  },
+  {
+   "country": "JPN",
+   "external_id": "3215",
+   "name": "NIKAIDO Ren",
+   "points": 249.1,
+   "rank": 7,
+   "slug": "ren-nikaido",
+   "status": ""
+  },
+  {
+   "country": "JPN",
+   "external_id": "1832",
+   "name": "ITO Yuki",
+   "points": 239.2,
+   "rank": 8,
+   "slug": "yuki-ito",
+   "status": ""
+  },
+  {
+   "country": "SLO",
+   "external_id": "2549",
+   "name": "ZAJC Timi",
+   "points": 237.3,
+   "rank": 9,
+   "slug": "timi-zajc",
+   "status": ""
+  },
+  {
+   "country": "SLO",
+   "external_id": "2523",
+   "name": "PREVC Domen",
+   "points": 236.4,
+   "rank": 10,
+   "slug": "domen-prevc",
+   "status": ""
+  },
+  {
+   "country": "FIN",
+   "external_id": "2457",
+   "name": "AALTO Antti",
+   "points": 232.2,
+   "rank": 11,
+   "slug": "antti-aalto",
+   "status": ""
+  },
+  {
+   "country": "POL",
+   "external_id": "3779",
+   "name": "TOMASIAK Kacper",
+   "points": 228.0,
+   "rank": 12,
+   "slug": "kacper-tomasiak",
+   "status": ""
+  },
+  {
+   "country": "GER",
+   "external_id": "3256",
+   "name": "RAIMUND Philipp",
+   "points": 213.1,
+   "rank": 13,
+   "slug": "philipp-raimund",
+   "status": ""
+  },
+  {
+   "country": "GER",
+   "external_id": "2690",
+   "name": "REISCH Agnes",
+   "points": 211.3,
+   "rank": 14,
+   "slug": "agnes-reisch",
+   "status": ""
+  },
+  {
+   "country": "JPN",
+   "external_id": "2680",
+   "name": "MARUYAMA Nozomi",
+   "points": 210.2,
+   "rank": 15,
+   "slug": "nozomi-maruyama",
+   "status": ""
+  },
+  {
+   "country": "NOR",
+   "external_id": "3333",
+   "name": "KVANDAL Eirin Maria",
+   "points": 204.4,
+   "rank": 16,
+   "slug": "eirin-maria-kvandal",
+   "status": ""
+  },
+  {
+   "country": "GER",
+   "external_id": "1895",
+   "name": "PASCHKE Pius",
+   "points": 204.3,
+   "rank": 17,
+   "slug": "pius-paschke",
+   "status": ""
+  },
+  {
+   "country": "SLO",
+   "external_id": "3016",
+   "name": "PREVC Nika",
+   "points": 204.1,
+   "rank": 18,
+   "slug": "nika-prevc",
+   "status": ""
+  },
+  {
+   "country": "SLO",
+   "external_id": "2860",
+   "name": "VODAN Nika",
+   "points": 203.5,
+   "rank": 19,
+   "slug": "nika-vodan",
+   "status": ""
+  },
+  {
+   "country": "AUT",
+   "external_id": "3273",
+   "name": "FETTNER Lisa",
+   "points": 196.4,
+   "rank": 20,
+   "slug": "lisa-fettner",
+   "status": ""
+  },
+  {
+   "country": "FIN",
+   "external_id": "1873",
+   "name": "RAUTIONAHO Jenny",
+   "points": 195.9,
+   "rank": 21,
+   "slug": "jenny-rautionaho",
+   "status": ""
+  },
+  {
+   "country": "GER",
+   "external_id": "3189",
+   "name": "FREITAG Selina",
+   "points": 193.0,
+   "rank": 22,
+   "slug": "selina-freitag",
+   "status": ""
+  },
+  {
+   "country": "FIN",
+   "external_id": "3689",
+   "name": "MATTILA Sofia",
+   "points": 188.5,
+   "rank": 23,
+   "slug": "sofia-mattila",
+   "status": ""
+  },
+  {
+   "country": "FIN",
+   "external_id": "3508",
+   "name": "VALTO Kasperi",
+   "points": 184.6,
+   "rank": 24,
+   "slug": "kasperi-valto",
+   "status": ""
+  },
+  {
+   "country": "POL",
+   "external_id": "1131",
+   "name": "KOT Maciej",
+   "points": 182.2,
+   "rank": 25,
+   "slug": "maciej-kot",
+   "status": ""
+  },
+  {
+   "country": "ITA",
+   "external_id": "3336",
+   "name": "MALSINER Jessica",
+   "points": 180.4,
+   "rank": 26,
+   "slug": "jessica-malsiner",
+   "status": ""
+  },
+  {
+   "country": "AUT",
+   "external_id": "3473",
+   "name": "MUEHLBACHER Julia",
+   "points": 164.8,
+   "rank": 27,
+   "slug": "julia-muehlbacher",
+   "status": ""
+  },
+  {
+   "country": "POL",
+   "external_id": "2710",
+   "name": "TWARDOSZ Anna",
+   "points": 162.4,
+   "rank": 28,
+   "slug": "anna-twardosz",
+   "status": ""
+  },
+  {
+   "country": "ITA",
+   "external_id": "3257",
+   "name": "BRESADOLA Giovanni",
+   "points": 143.3,
+   "rank": 29,
+   "slug": "giovanni-bresadola",
+   "status": ""
+  },
+  {
+   "country": "ITA",
+   "external_id": "3328",
+   "name": "CECON Francesco",
+   "points": 141.5,
+   "rank": 30,
+   "slug": "francesco-cecon",
+   "status": ""
+  },
+  {
+   "country": "FRA",
+   "external_id": "3331",
+   "name": "FOUBERT Valentin",
+   "points": 107.8,
+   "rank": 31,
+   "slug": "valentin-foubert",
+   "status": ""
+  },
+  {
+   "country": "USA",
+   "external_id": "3913",
+   "name": "FRANTZ Tate",
+   "points": 107.7,
+   "rank": 32,
+   "slug": "tate-frantz",
+   "status": ""
+  },
+  {
+   "country": "POL",
+   "external_id": "2744",
+   "name": "KARPIEL Kamila",
+   "points": 104.0,
+   "rank": 33,
+   "slug": "kamila-karpiel",
+   "status": ""
+  },
+  {
+   "country": "CHN",
+   "external_id": "3767",
+   "name": "ZENG Ping",
+   "points": 95.0,
+   "rank": 34,
+   "slug": "ping-zeng",
+   "status": ""
+  },
+  {
+   "country": "CZE",
+   "external_id": "297",
+   "name": "KOUDELKA Roman",
+   "points": 94.5,
+   "rank": 35,
+   "slug": "roman-koudelka",
+   "status": ""
+  },
+  {
+   "country": "USA",
+   "external_id": "3789",
+   "name": "JOHNSON Josie",
+   "points": 92.9,
+   "rank": 36,
+   "slug": "josie-johnson",
+   "status": ""
+  },
+  {
+   "country": "ITA",
+   "external_id": "3018",
+   "name": "ZANITZER Martina",
+   "points": 82.9,
+   "rank": 37,
+   "slug": "martina-zanitzer",
+   "status": ""
+  },
+  {
+   "country": "CHN",
+   "external_id": "2677",
+   "name": "DONG Bing",
+   "points": 75.2,
+   "rank": 38,
+   "slug": "bing-dong",
+   "status": ""
+  },
+  {
+   "country": "CHN",
+   "external_id": "3773",
+   "name": "SONG Qiwu",
+   "points": 69.8,
+   "rank": 39,
+   "slug": "qiwu-song",
+   "status": ""
+  },
+  {
+   "country": "FRA",
+   "external_id": "3127",
+   "name": "PAGNIER Josephine",
+   "points": 64.2,
+   "rank": 40,
+   "slug": "josephine-pagnier",
+   "status": ""
+  },
+  {
+   "country": "CZE",
+   "external_id": "3770",
+   "name": "RYGL David",
+   "points": 43.3,
+   "rank": 41,
+   "slug": "david-rygl",
+   "status": ""
+  },
+  {
+   "country": "FRA",
+   "external_id": "3734",
+   "name": "CHERVET Jules",
+   "points": 41.1,
+   "rank": 42,
+   "slug": "jules-chervet",
+   "status": ""
+  },
+  {
+   "country": "FRA",
+   "external_id": "4000",
+   "name": "THOMAS COUTURAUD Marie",
+   "points": 35.8,
+   "rank": 43,
+   "slug": "couturaud-marie-thomas",
+   "status": ""
+  },
+  {
+   "country": "CZE",
+   "external_id": "3799",
+   "name": "INDRACKOVA Anezka",
+   "points": 24.5,
+   "rank": 44,
+   "slug": "anezka-indrackova",
+   "status": ""
+  },
+  {
+   "country": "USA",
+   "external_id": "1447",
+   "name": "GERAGHTY-MOATS Tara",
+   "points": 21.1,
+   "rank": 45,
+   "slug": "tara-geraghty-moats",
+   "status": ""
+  },
+  {
+   "country": "CZE",
+   "external_id": "3382",
+   "name": "ULRICHOVA Klara",
+   "points": 20.3,
+   "rank": 46,
+   "slug": "klara-ulrichova",
+   "status": ""
+  },
+  {
+   "country": "USA",
+   "external_id": "4148",
+   "name": "LOHER Henry",
+   "points": 19.0,
+   "rank": 47,
+   "slug": "henry-loher",
+   "status": ""
+  },
+  {
+   "country": "CHN",
+   "external_id": "3665",
+   "name": "ZHEN Weijie",
+   "points": 16.3,
+   "rank": 48,
+   "slug": "weijie-zhen",
+   "status": ""
+  }
+ ],
+ "title": "Skoki narciarskie. Wyniki Pucharu Świata z dnia 2026-11-20, konkurs drużynowy, Lillehammer (HS-140), Norwegia"
+}
